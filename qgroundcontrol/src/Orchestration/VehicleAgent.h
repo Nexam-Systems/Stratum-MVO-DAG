@@ -1,10 +1,14 @@
 #pragma once
 
 #include <QtCore/QObject>
+#include <QtCore/QString>
 #include <QtQmlIntegration/QtQmlIntegration>
+
+#include "VehicleTypes.h"   // mavlink_command_ack_t + MavCmdResultFailureCode_t for the ACK handler
 
 class Vehicle;
 class RingSlot;
+class StandoffRing;
 
 /// VehicleAgent — one vehicle, one slot, one FSM (ICD §3.2).
 /// Pins its Vehicle* at construction and never lets go (RE2). Observes and
@@ -30,7 +34,7 @@ public:
     Q_PROPERTY(Vehicle*   vehicle      READ vehicle      CONSTANT)          ///< pinned for life (RE2)
     Q_PROPERTY(AgentState state        READ state        NOTIFY stateChanged)
     Q_PROPERTY(RingSlot*  slot         READ slot         NOTIFY slotChanged)
-    Q_PROPERTY(double     transitLevel READ transitLevel NOTIFY transitLevelChanged)  ///< AMSL m
+    Q_PROPERTY(double     transitLevel READ transitLevel NOTIFY transitLevelChanged)  ///< S1: relative height above home
     Q_PROPERTY(double     runInLengthM READ runInLengthM NOTIFY planChanged)
     Q_PROPERTY(double     etaSeconds   READ etaSeconds   NOTIFY planChanged)
     Q_PROPERTY(bool       linkHealthy  READ linkHealthy  NOTIFY linkHealthyChanged)
@@ -45,8 +49,9 @@ public:
     double     etaSeconds()   const { return _etaSeconds; }
     bool       linkHealthy()  const { return _linkHealthy; }
 
+    void setRing(StandoffRing *ring);   ///< the derived ring geometry (target, R, H) this agent commits to
     void assignSlot(RingSlot *slot);
-    void setTransitLevel(double amslMeters);
+    void setTransitLevel(double relativeMeters);
     void beginCommit();     ///< executes the ICD §7 commit sequence for this one agent
     void hold();            ///< -> Hold (operator-authorised path only)
     void abortToRtl();      ///< operator-directed RTL
@@ -62,20 +67,33 @@ signals:
 
 private:
     void _setState(AgentState s);
+    void _wire();                       ///< connect telemetry once (flightMode, altitude)
+    double _currentRelAlt() const;
 
-    // --- ICD §7 commit sequence, per agent. Bodies are filled and demonstrated
-    //     against multi-instance SITL during S1 (roadmap S1 exit gate). The
-    //     ordering below is firmware-coupled and MUST NOT be reordered (RE5). ---
-    void _stepEnsureTransitLevel();  // 1: guidedModeTakeoff / guidedModeChangeAltitude
-    void _stepSendStandoffSetpoint(); // 2: sendMavCommandIntWithHandler(31010, ...) ACK-matched, BEFORE mode
-    void _stepSwitchMode();           // 3: flightMode = "Standoff"; await nav_state == 9
-    bool _arrivalPredicate() const;   // ICD §7.4: (9->3) AND slot-dist < NAV_ACC_RAD AND alt within tol
+    // --- ICD §7 commit sequence, per agent. The ordering below is firmware-coupled
+    //     and MUST NOT be reordered (RE5): geometry (31010) is ACK-confirmed BEFORE the
+    //     mode switch, and the mode switch is confirmed via telemetry before RUN_IN. ---
+    void _stepEnsureTransitLevel();   // 1: guidedModeTakeoff / guidedModeChangeAltitude
+    void _stepSendStandoffSetpoint(); // 2: sendMavCommandIntWithHandler(31010, ...) ACK-matched
+    void _stepSwitchMode();           // 3: flightMode = "Standoff"; RUN_IN on nav_state == 9
+    bool _arrivalPredicate() const;   // ICD §7.4: (9->3) AND slot-dist < acc AND alt within tol
+
+    // Telemetry-driven progression.
+    void _onFlightModeChanged(const QString &mode);
+    void _onAltitudeChanged();
+
+    // ACK handler for the 31010 COMMAND_INT (ICD §7.3). Static so it matches the
+    // MavCmdResultHandler function-pointer type; `data` carries the VehicleAgent*.
+    static void _onStandoffAck(void *data, int compId, const mavlink_command_ack_t &ack,
+                               VehicleTypes::MavCmdResultFailureCode_t failureCode);
 
     Vehicle* const _vehicle;         ///< immutable — the compile-time guarantee of RE2
+    StandoffRing*  _ring         = nullptr;   ///< derived geometry; not owned
     RingSlot*      _slot         = nullptr;
     AgentState     _state        = UNASSIGNED;
-    double         _transitLevel = 0.0;
+    double         _transitLevel = 0.0;       ///< S1: relative height above home for the run-in
     double         _runInLengthM = 0.0;
     double         _etaSeconds   = 0.0;
     bool           _linkHealthy  = true;
+    bool           _wired        = false;
 };

@@ -67,6 +67,7 @@ bool OrchestrationManager::assignVehicleToSlot(int vehicleId, int slotIndex)
         return false;   // one agent per vehicle (bijection, ICD §3.4)
     }
     auto *agent = new VehicleAgent(v, this);
+    agent->setRing(_ring);   // pin the derived ring geometry (target, R, H) for commit
     auto *slot  = new RingSlot(this);
     slot->setAgent(agent);
     slot->setSlotState(RingSlot::ASSIGNED);
@@ -100,8 +101,19 @@ void OrchestrationManager::execute()
         return;   // no-op while !armable (ICD §3.1)
     }
     _setMissionState(EXECUTING);
+    // S1 transit-level stratification (relative height above home). A distinct level
+    // per agent so the firmware-owned run-in (F3) is vertically separated by
+    // construction; TransitPlanner formalises this (AMSL, ΔH, ETA, staggered
+    // CommitSchedule) in S2.
+    const double baseTransit = _ring->heightM() + 10.0;   // clear the common hold height H
+    const double deltaH      = 10.0;                       // ICD §6.3 workhorse layer
     for (int i = 0; i < _agents->count(); ++i) {
         if (auto *agent = qobject_cast<VehicleAgent *>(_agents->get(i))) {
+            const double transit = baseTransit + (i * deltaH);
+            agent->setTransitLevel(transit);
+            if (agent->slot()) {
+                agent->slot()->setTransitLevel(transit);
+            }
             agent->beginCommit();   // staggered CommitSchedule offsets land in S2
         }
     }
