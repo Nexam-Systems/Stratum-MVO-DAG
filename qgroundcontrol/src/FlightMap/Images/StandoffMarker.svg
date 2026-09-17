@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- STRATUM: target marker - a simple "T" in a circle, centre-anchored on the target
+     coordinate (the centre of the surveillance circle). Drawn MONOCHROME white and
+     tinted at runtime through QGCColoredImage: blue (#1E88E5) while the target is
+     being set in the Set Standoff panel, red (#D11A35) once the standoff is engaged
+     and the target position is being served. The same asset, tinted by button state,
+     serves as the tool-strip icon. Square viewBox so the geometric centre (24,24)
+     is the anchor. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <circle cx="24" cy="24" r="19" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+  <rect x="14" y="13" width="20" height="5" rx="1" fill="#FFFFFF"/>
+  <rect x="21.5" y="13" width="5" height="22" rx="1" fill="#FFFFFF"/>
+</svg>

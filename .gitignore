@@ -1,0 +1,58 @@
+# ── STRATUM-Desktop .gitignore ───────────────────────────────────────────────
+# Monorepo: STRATUM-specific source + docs + the vendored QGC tree. Build
+# outputs and fetched dependencies are never committed.
+
+# Dependency / build caches (CPM downloads carry nested .git dirs — never track)
+**/.cache/
+qgroundcontrol/.cache/
+
+# Qt / CMake / build trees
+/build/
+/build-*/
+**/build/
+qgroundcontrol/build/
+**/*.user
+**/*.autosave
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.o
+*.obj
+*.moc
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+*.qmlc
+*.jsc
+
+# Qt Creator / IDE
+*.pro.user*
+.qtc_clangd/
+.vscode/
+.idea/
+*.swp
+
+# flyview-web (Node)
+flyview-web/node_modules/
+flyview-web/dist/
+flyview-web/.env
+npm-debug.log*
+yarn-error.log*
+
+# Windows build/install artifacts
+*.exe
+*.msi
+*.zip
+*.installer
+
+# OS cruft
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# Temp / logs
+*.log
+*.tmp
+*.bak

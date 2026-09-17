@@ -1,0 +1,99 @@
+#pragma once
+
+#include <stdint.h>
+
+enum PX4_CUSTOM_MAIN_MODE {
+	PX4_CUSTOM_MAIN_MODE_MANUAL = 1,
+	PX4_CUSTOM_MAIN_MODE_ALTCTL,
+	PX4_CUSTOM_MAIN_MODE_POSCTL,
+	PX4_CUSTOM_MAIN_MODE_AUTO,
+	PX4_CUSTOM_MAIN_MODE_ACRO,
+	PX4_CUSTOM_MAIN_MODE_OFFBOARD,
+	PX4_CUSTOM_MAIN_MODE_STABILIZED,
+	PX4_CUSTOM_MAIN_MODE_RATTITUDE,
+	PX4_CUSTOM_MAIN_MODE_SIMPLE /* unused, but reserved for future use */
+};
+
+enum PX4_CUSTOM_SUB_MODE_AUTO {
+	PX4_CUSTOM_SUB_MODE_AUTO_READY = 1,
+	PX4_CUSTOM_SUB_MODE_AUTO_TAKEOFF,
+	PX4_CUSTOM_SUB_MODE_AUTO_LOITER,
+	PX4_CUSTOM_SUB_MODE_AUTO_MISSION,
+	PX4_CUSTOM_SUB_MODE_AUTO_RTL,
+	PX4_CUSTOM_SUB_MODE_AUTO_LAND,
+	PX4_CUSTOM_SUB_MODE_AUTO_RTGS,             // 7 (this fork's name for RESERVED_DO_NOT_USE; same value, keep it)
+	PX4_CUSTOM_SUB_MODE_AUTO_FOLLOW_TARGET,    // 8
+	PX4_CUSTOM_SUB_MODE_AUTO_PRECLAND,         // 9
+	// STRATUM: append-only, kept in lock-step with firmware ordering so STANDOFF resolves to 20.
+	PX4_CUSTOM_SUB_MODE_AUTO_VTOL_TAKEOFF,     // 10
+	PX4_CUSTOM_SUB_MODE_AUTO_EXTERNAL1,        // 11
+	PX4_CUSTOM_SUB_MODE_AUTO_EXTERNAL2,        // 12
+	PX4_CUSTOM_SUB_MODE_AUTO_EXTERNAL3,        // 13
+	PX4_CUSTOM_SUB_MODE_AUTO_EXTERNAL4,        // 14
+	PX4_CUSTOM_SUB_MODE_AUTO_EXTERNAL5,        // 15
+	PX4_CUSTOM_SUB_MODE_AUTO_EXTERNAL6,        // 16
+	PX4_CUSTOM_SUB_MODE_AUTO_EXTERNAL7,        // 17
+	PX4_CUSTOM_SUB_MODE_AUTO_EXTERNAL8,        // 18
+	PX4_CUSTOM_SUB_MODE_AUTO_GUIDED_COURSE,    // 19
+	PX4_CUSTOM_SUB_MODE_AUTO_STANDOFF,         // 20
+	// STRATUM: append-only, kept in lock-step with firmware ordering so ENGAGEMENT resolves to 21.
+	PX4_CUSTOM_SUB_MODE_AUTO_ENGAGEMENT,       // 21
+	// STRATUM: append-only, kept in lock-step with firmware ordering so ABORT resolves to 22.
+	PX4_CUSTOM_SUB_MODE_AUTO_ABORT,            // 22
+	// STRATUM: append-only, kept in lock-step with firmware ordering so VISION_ENGAGEMENT resolves to 23.
+	PX4_CUSTOM_SUB_MODE_AUTO_VISION_ENGAGEMENT, // 23
+	// STRATUM: append-only, kept in lock-step with firmware ordering so PN_ENGAGEMENT resolves to 24.
+	// Firmware side: src/modules/commander/px4_custom_mode.h, PX4_CUSTOM_SUB_MODE_PN_ENGAGEMENT = 24,
+	// which Commander maps to vehicle_status_s::NAVIGATION_STATE_PN_ENGAGEMENT = 30. Note that 30 is
+	// the former EXTERNAL8 slot: the mode_req_* bitfield in FailsafeFlags.msg is uint32, so nav_states
+	// 0-31 exhaust it and there was no free slot to allocate. The sub-mode number and the nav_state
+	// number are therefore NOT related, and neither is derivable from the other.
+	PX4_CUSTOM_SUB_MODE_AUTO_PN_ENGAGEMENT     // 24
+};
+
+enum PX4_CUSTOM_SUB_MODE_POSCTL {
+    PX4_CUSTOM_SUB_MODE_POSCTL_POSCTL = 0,
+    PX4_CUSTOM_SUB_MODE_POSCTL_ORBIT
+};
+
+union px4_custom_mode {
+    struct {
+        uint16_t reserved;
+        uint8_t main_mode;
+        uint8_t sub_mode;
+    };
+    uint32_t data;
+    float data_float;
+    struct {
+        uint16_t reserved_hl;
+        uint16_t custom_mode_hl;
+    };
+};
+
+struct PX4CustomMode{
+    enum Mode : uint32_t{
+        MANUAL              = PX4_CUSTOM_MAIN_MODE_MANUAL       <<16,
+        STABILIZED          = PX4_CUSTOM_MAIN_MODE_STABILIZED   <<16,
+        ACRO                = PX4_CUSTOM_MAIN_MODE_ACRO         <<16,
+        RATTITUDE           = PX4_CUSTOM_MAIN_MODE_RATTITUDE    <<16,
+        ALTCTL              = PX4_CUSTOM_MAIN_MODE_ALTCTL       <<16,
+        OFFBOARD            = PX4_CUSTOM_MAIN_MODE_OFFBOARD     <<16,
+        SIMPLE              = PX4_CUSTOM_MAIN_MODE_SIMPLE       <<16,
+        POSCTL_POSCTL       = PX4_CUSTOM_MAIN_MODE_POSCTL       <<16 | (PX4_CUSTOM_SUB_MODE_POSCTL_POSCTL      << 24 ),
+        POSCTL_ORBIT        = PX4_CUSTOM_MAIN_MODE_POSCTL       <<16 | (PX4_CUSTOM_SUB_MODE_POSCTL_ORBIT       << 24 ),
+        AUTO_LOITER         = PX4_CUSTOM_MAIN_MODE_AUTO         <<16 | (PX4_CUSTOM_SUB_MODE_AUTO_LOITER        << 24 ),
+        AUTO_MISSION        = PX4_CUSTOM_MAIN_MODE_AUTO         <<16 | (PX4_CUSTOM_SUB_MODE_AUTO_MISSION       << 24 ),
+        AUTO_RTL            = PX4_CUSTOM_MAIN_MODE_AUTO         <<16 | (PX4_CUSTOM_SUB_MODE_AUTO_RTL           << 24 ),
+        AUTO_FOLLOW_TARGET  = PX4_CUSTOM_MAIN_MODE_AUTO         <<16 | (PX4_CUSTOM_SUB_MODE_AUTO_FOLLOW_TARGET << 24 ),
+        AUTO_LAND           = PX4_CUSTOM_MAIN_MODE_AUTO         <<16 | (PX4_CUSTOM_SUB_MODE_AUTO_LAND          << 24 ),
+        AUTO_PRECLAND       = PX4_CUSTOM_MAIN_MODE_AUTO         <<16 | (PX4_CUSTOM_SUB_MODE_AUTO_PRECLAND      << 24 ),
+        AUTO_READY          = PX4_CUSTOM_MAIN_MODE_AUTO         <<16 | (PX4_CUSTOM_SUB_MODE_AUTO_READY         << 24 ),
+        AUTO_RTGS           = PX4_CUSTOM_MAIN_MODE_AUTO         <<16 | (PX4_CUSTOM_SUB_MODE_AUTO_RTGS          << 24 ),
+        AUTO_TAKEOFF        = PX4_CUSTOM_MAIN_MODE_AUTO         <<16 | (PX4_CUSTOM_SUB_MODE_AUTO_TAKEOFF       << 24 ),
+        AUTO_STANDOFF       = PX4_CUSTOM_MAIN_MODE_AUTO         <<16 | (PX4_CUSTOM_SUB_MODE_AUTO_STANDOFF      << 24 ),
+        AUTO_ENGAGEMENT     = PX4_CUSTOM_MAIN_MODE_AUTO         <<16 | (PX4_CUSTOM_SUB_MODE_AUTO_ENGAGEMENT    << 24 ),
+        AUTO_ABORT          = PX4_CUSTOM_MAIN_MODE_AUTO         <<16 | (PX4_CUSTOM_SUB_MODE_AUTO_ABORT         << 24 ),
+        AUTO_VISION_ENGAGEMENT = PX4_CUSTOM_MAIN_MODE_AUTO      <<16 | (PX4_CUSTOM_SUB_MODE_AUTO_VISION_ENGAGEMENT << 24 ),
+        AUTO_PN_ENGAGEMENT  = PX4_CUSTOM_MAIN_MODE_AUTO         <<16 | (PX4_CUSTOM_SUB_MODE_AUTO_PN_ENGAGEMENT    << 24 ),
+    };
+};
