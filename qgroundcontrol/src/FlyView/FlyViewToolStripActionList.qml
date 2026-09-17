@@ -60,6 +60,7 @@ ToolStripActionList {
         GuidedActionPnEngage { },
         // STRATUM: Tracking on/off toggle -- enables/disables the already-running
         // companion tracker via Vehicle.setTrackerEnabled(bool) (NEXAM_TRACKER_CONFIG 42005).
-        TrackingToggleAction { }
+        TrackingToggleAction { },
+        FlyViewOrchestrationAction { }   // STRATUM MVO S1 debug harness (throwaway; removed at S3)
     ]
 }

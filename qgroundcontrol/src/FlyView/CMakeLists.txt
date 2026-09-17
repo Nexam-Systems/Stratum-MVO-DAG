@@ -42,6 +42,8 @@ qt_add_qml_module(FlyViewModule
         FlyViewMissionCompleteDialog.qml
         FlyViewPreFlightChecklistPopup.qml
         FlyViewStandoffAction.qml
+        FlyViewOrchestrationAction.qml
+        Orchestration/OrchestrationDebugPanel.qml
         FlyViewToolStrip.qml
         FlyViewToolStripActionList.qml
 

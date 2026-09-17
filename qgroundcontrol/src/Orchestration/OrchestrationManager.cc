@@ -158,3 +158,12 @@ VehicleAgent *OrchestrationManager::_agentForVehicle(int vehicleId) const
     }
     return nullptr;
 }
+
+void OrchestrationManager::debugForceArmable(bool armable)
+{
+    if (_armable == armable) {
+        return;
+    }
+    _armable = armable;
+    emit armableChanged(_armable);
+}

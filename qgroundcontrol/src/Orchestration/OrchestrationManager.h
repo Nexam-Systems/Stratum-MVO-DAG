@@ -58,6 +58,9 @@ public:
     Q_INVOKABLE void terminate();                                      // -> TERMINATING
     Q_INVOKABLE void reslot(int vehicleId, double newBearingDeg);      // ON_STATION re-commit
 
+    // --- S1 debug harness only; deleted when FailsafeVerifier wires the real gate (S2, RE6) ---
+    Q_INVOKABLE void debugForceArmable(bool armable);
+
 signals:
     void missionStateChanged(MissionState s);
     void ringChanged();
