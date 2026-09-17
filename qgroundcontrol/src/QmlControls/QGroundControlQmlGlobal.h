@@ -15,6 +15,7 @@ class LinkManager;
 class MAVLinkSigningKeys;
 class MissionCommandTree;
 class MultiVehicleManager;
+class OrchestrationManager;
 class QGCCorePlugin;
 class QGCMapEngineManager;
 class NTRIPManager;
@@ -31,6 +32,7 @@ Q_MOC_INCLUDE("LinkManager.h")
 Q_MOC_INCLUDE("MAVLinkSigningKeys.h")
 Q_MOC_INCLUDE("MissionCommandTree.h")
 Q_MOC_INCLUDE("MultiVehicleManager.h")
+Q_MOC_INCLUDE("OrchestrationManager.h")
 Q_MOC_INCLUDE("QGCCorePlugin.h")
 Q_MOC_INCLUDE("QGCMapEngineManager.h")
 Q_MOC_INCLUDE("QGCPalette.h")
@@ -63,6 +65,7 @@ public:
     Q_PROPERTY(QString              appName                 READ    appName                 CONSTANT)
     Q_PROPERTY(LinkManager*         linkManager             READ    linkManager             CONSTANT)
     Q_PROPERTY(MultiVehicleManager* multiVehicleManager     READ    multiVehicleManager     CONSTANT)
+    Q_PROPERTY(OrchestrationManager* orchestration          READ    orchestration           CONSTANT)
     Q_PROPERTY(QGCMapEngineManager* mapEngineManager        READ    mapEngineManager        CONSTANT)
     Q_PROPERTY(QGCPositionManager*  qgcPositionManger       READ    qgcPositionManger       CONSTANT)
     Q_PROPERTY(VideoManager*        videoManager            READ    videoManager            CONSTANT)
@@ -157,6 +160,7 @@ public:
     static QString appName();
     LinkManager*            linkManager         ()  { return _linkManager; }
     MultiVehicleManager*    multiVehicleManager ()  { return _multiVehicleManager; }
+    OrchestrationManager*   orchestration       ()  { return _orchestration; }
     QGCMapEngineManager*    mapEngineManager    ()  { return _mapEngineManager; }
     QGCPositionManager*     qgcPositionManger   ()  { return _qgcPositionManager; }
     MissionCommandTree*     missionCommandTree  ()  { return _missionCommandTree; }
@@ -227,6 +231,7 @@ private:
     VideoManager*           _videoManager           = nullptr;
     LinkManager*            _linkManager            = nullptr;
     MultiVehicleManager*    _multiVehicleManager    = nullptr;
+    OrchestrationManager*   _orchestration          = nullptr;
     SettingsManager*        _settingsManager        = nullptr;
     QGCCorePlugin*          _corePlugin             = nullptr;
     QGCPalette*             _globalPalette          = nullptr;
