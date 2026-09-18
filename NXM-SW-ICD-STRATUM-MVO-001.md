@@ -524,7 +524,7 @@ The existing single-vehicle **Abort** surface — `EngagementController`, `Guide
 | Member | Contract |
 |---|---|
 | `Q_INVOKABLE void authorizeEngagement(bool authorized)` | The second gate. Engagement commands are no-ops until set `true`. Separate from `armable` — the RE6 ARM gate is unchanged. |
-| `Q_INVOKABLE void engageAll()` | Commands coordinate Engagement (sub=21) on every `ON_STATION` agent. No-op unless authorised. Issues no abort. |
+| `Q_INVOKABLE void engageAll(double staggerSeconds = 0)` | Commands coordinate Engagement (sub=21) on every `ON_STATION` agent, **staggered in time by `staggerSeconds` between successive agents** (0 = simultaneous). Temporal deconfliction of the terminal dives, which share one aimpoint. No-op unless authorised. Issues no abort. |
 | `Q_INVOKABLE void engage(int vehicleId)` | Per-agent engage; same authorisation guard. |
 | `Q_PROPERTY(bool engageAuthorized ...)` | Reflects the second gate for the operator surface. |
 

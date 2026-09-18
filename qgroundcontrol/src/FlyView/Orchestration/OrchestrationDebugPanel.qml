@@ -73,9 +73,15 @@ Window {
         }
         RowLayout {
             spacing: 6
-            QGCLabel { text: qsTr("R (m) / H (m)") }
+            QGCLabel { text: qsTr("R (m) / Standoff H (m)") }
             QGCTextField { id: radiusField; text: "300"; Layout.preferredWidth: 70 }
             QGCTextField { id: heightField; text: "60";  Layout.preferredWidth: 70 }
+        }
+        RowLayout {
+            spacing: 6
+            QGCLabel { text: qsTr("Engage stagger (s/vehicle)") }
+            QGCTextField { id: engageDelayField; text: "3"; Layout.preferredWidth: 70 }
+            QGCLabel { text: qsTr("0 = simultaneous"); opacity: 0.7 }
         }
 
         GridLayout {
@@ -128,7 +134,7 @@ Window {
                 text: qsTr("9. Engage all (coord, sub=21)")
                 Layout.fillWidth: true
                 enabled: root.orch.engageAuthorized
-                onClicked: root.orch.engageAll()
+                onClicked: root.orch.engageAll(parseFloat(engageDelayField.text))
             }
             QGCButton {
                 text: qsTr("Hold all")

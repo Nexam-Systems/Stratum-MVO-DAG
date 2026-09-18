@@ -64,7 +64,7 @@ public:
 
     // Terminal engagement (Addendum A) — additive; a SECOND gate, distinct from ARM.
     Q_INVOKABLE void authorizeEngagement(bool authorized);            // set/clear the engagement gate
-    Q_INVOKABLE void engageAll();                                    // coordinate Engagement (sub=21) on every ON_STATION agent
+    Q_INVOKABLE void engageAll(double staggerSeconds = 0.0);          // coordinate Engagement (sub=21), staggered by staggerSeconds between ON_STATION agents
     Q_INVOKABLE void engage(int vehicleId);                          // per-agent engage
 
 signals:

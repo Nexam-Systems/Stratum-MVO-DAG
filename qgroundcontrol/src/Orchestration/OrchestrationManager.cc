@@ -267,23 +267,31 @@ void OrchestrationManager::authorizeEngagement(bool authorized)
                              : QStringLiteral("engagement authorisation cleared"));
 }
 
-void OrchestrationManager::engageAll()
+void OrchestrationManager::engageAll(double staggerSeconds)
 {
-    // Coordinate Engagement (sub=21) on every ON_STATION agent (Addendum A). No abort path;
-    // no autonomous manoeuvre (RE4). Existing single-vehicle abort is untouched.
+    // Coordinate Engagement (sub=21) on every ON_STATION agent (Addendum A), STAGGERED in time
+    // by staggerSeconds between successive agents so the terminal dives do not converge on the
+    // shared aimpoint simultaneously (flight-test 2026-09-19 showed <10 ms sync collapsing
+    // pairwise separation to ~1 m). No abort path; no autonomous manoeuvre (RE4). Existing
+    // single-vehicle abort is untouched.
     if (!_engageAuthorized) {
         emit advisory(QStringLiteral("engageAll blocked: engagement not authorised (Addendum A.5)"));
         return;
     }
-    int commanded = 0;
+    const double stagger = qMax(0.0, staggerSeconds);
+    int order = 0;
     for (int i = 0; i < _agents->count(); ++i) {
         auto *agent = qobject_cast<VehicleAgent *>(_agents->get(i));
         if (agent && agent->state() == VehicleAgent::ON_STATION) {
-            agent->engage();
-            ++commanded;
+            const int delayMs = static_cast<int>(order * stagger * 1000.0);
+            QTimer::singleShot(delayMs, agent, [agent]() { agent->engage(); });
+            ++order;
         }
     }
-    emit advisory(QStringLiteral("engageAll: commanded %1 ON_STATION agent(s) to Engagement (sub=21)").arg(commanded));
+    emit advisory(QStringLiteral("engageAll: %1 ON_STATION agent(s), %2 s stagger (engage window %3 s)")
+                      .arg(order)
+                      .arg(stagger, 0, 'f', 1)
+                      .arg(order > 0 ? (order - 1) * stagger : 0.0, 0, 'f', 1));
 }
 
 void OrchestrationManager::engage(int vehicleId)
