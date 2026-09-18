@@ -1,8 +1,11 @@
 #pragma once
 
 #include <QtCore/QObject>
+#include <QtCore/QList>
 #include <QtPositioning/QGeoCoordinate>
 #include <QtQmlIntegration/QtQmlIntegration>
+
+#include "OrchestrationTypes.h"
 
 class StandoffRing;
 class RingSlot;
@@ -44,22 +47,18 @@ public:
     bool                degraded()     const { return _degraded; }
     bool                armable()      const { return _armable; }
 
-    // Operator intent (wizard-driven) — ICD §3.1. The surface is frozen so the
-    // QML (ICD §6) binds to it now; S2/S4 bodies fill proposeAssignment/runPreflight.
+    // Operator intent (wizard-driven) — ICD §3.1.
     Q_INVOKABLE void beginMission();                                    // IDLE -> DEFINING_RING
     Q_INVOKABLE void setTarget(const QGeoCoordinate &target);
     Q_INVOKABLE void setRing(double radiusMeters, double heightMeters);
-    Q_INVOKABLE void proposeAssignment();                              // S2: SlotAssignmentSolver
+    Q_INVOKABLE void proposeAssignment();                              // SlotAssignmentSolver + TransitPlanner
     Q_INVOKABLE bool assignVehicleToSlot(int vehicleId, int slotIndex); // operator override
     Q_INVOKABLE void reviewPlan();                                     // ASSIGNING_SLOTS -> PLAN_REVIEW
-    Q_INVOKABLE void runPreflight();                                   // S2: FailsafeVerifier (RE6)
+    Q_INVOKABLE void runPreflight();                                   // FailsafeVerifier gates ARM (RE6)
     Q_INVOKABLE void execute();                                        // PREFLIGHT -> EXECUTING (guarded by armable)
     Q_INVOKABLE void holdAll();                                        // operator-authorised; every agent -> Hold
-    Q_INVOKABLE void terminate();                                      // -> TERMINATING
+    Q_INVOKABLE void terminate();                                     // -> TERMINATING
     Q_INVOKABLE void reslot(int vehicleId, double newBearingDeg);      // ON_STATION re-commit
-
-    // --- S1 debug harness only; deleted when FailsafeVerifier wires the real gate (S2, RE6) ---
-    Q_INVOKABLE void debugForceArmable(bool armable);
 
 signals:
     void missionStateChanged(MissionState s);
@@ -69,14 +68,18 @@ signals:
     void advisory(const QString &text);   ///< surfaced to the operator; never actuated (ICD §3.1)
 
 private:
-    void _setMissionState(MissionState s);
-    void _onVehicleAdded(Vehicle *vehicle);     ///< MultiVehicleManager subscription (ICD §3.1)
-    void _onVehicleRemoved(Vehicle *vehicle);
+    void          _setMissionState(MissionState s);
+    void          _onVehicleAdded(Vehicle *vehicle);     ///< MultiVehicleManager subscription (ICD §3.1)
+    void          _onVehicleRemoved(Vehicle *vehicle);
     VehicleAgent* _agentForVehicle(int vehicleId) const;
+    void          _clearAgents();                        ///< tear down the agent set (slots are child objects)
+    QList<double> _otherBearings(const RingSlot *except) const;   ///< bearings of every OTHER assigned slot
+    void          _installBearingGuard(RingSlot *slot);  ///< theta_min guard via StandoffRing::bearingAllowed (ICD §3.4)
 
     MissionState        _missionState = IDLE;
     StandoffRing*       _ring     = nullptr;
     QmlObjectListModel* _agents   = nullptr;    ///< VehicleAgent*
     bool                _degraded = false;
     bool                _armable  = false;
+    CommitSchedule      _schedule;              ///< staggered-commit offsets from the last TransitPlanner run
 };
