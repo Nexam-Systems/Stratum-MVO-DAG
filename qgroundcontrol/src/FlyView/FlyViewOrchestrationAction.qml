@@ -4,17 +4,13 @@ import QGroundControl
 import QGroundControl.Controls
 
 // STRATUM MVO — S1 debug harness launcher (throwaway; replaced by the real wizard at S3).
-// Opens a standalone window that drives QGroundControl.orchestration only. It drives
-// the orchestration singleton, never the active-vehicle pointer (RE2). Additive
-// tool-strip entry; changes no single-vehicle behaviour (RE1).
+// Opens the standalone debug window that drives QGroundControl.orchestration only (RE2);
+// additive tool-strip entry, changes no single-vehicle behaviour (RE1).
 //
-// The launcher resolves the panel by URL relative to this file
-// (FlyView/ -> FlyView/Orchestration/OrchestrationDebugPanel.qml) rather than by the
-// (module, typeName) createComponent overload: a QML file in a module SUBDIRECTORY is
-// not reliably exposed as a top-level type name, which is why the button previously
-// did nothing — the component silently failed to load. The URL form is resolved
-// against the compiled qrc resource and always finds the panel. Async status is
-// handled so a not-yet-ready component still opens.
+// The window is created and shown exactly the way MainWindow.createWindowedAnalyzePage
+// does it — parented to mainWindow and made visible via `visible = true`, NOT
+// createObject(null) + show(), which failed to display. Any load/create failure is
+// surfaced as an in-app message dialog so the reason is visible without a console.
 ToolStripAction {
     id: action
 
@@ -29,8 +25,11 @@ ToolStripAction {
     property var _win:       null
     property var _component: null
 
-    onTriggered: {
+    onTriggered: action._open()
+
+    function _open() {
         if (_win) {
+            _win.visible = true
             _win.raise()
             _win.requestActivate()
             return
@@ -38,7 +37,7 @@ ToolStripAction {
         if (!_component) {
             _component = Qt.createComponent(Qt.resolvedUrl("Orchestration/OrchestrationDebugPanel.qml"))
         }
-        _spawn()
+        action._spawn()
     }
 
     function _spawn() {
@@ -46,17 +45,19 @@ ToolStripAction {
             _component.statusChanged.connect(action._spawn)
             return
         }
-        if (_component.status === Component.Ready) {
-            _win = _component.createObject(null)
-            if (_win) {
-                _win.show()
-                _win.raise()
-                _win.requestActivate()
-            } else {
-                console.error("MVO debug: panel createObject failed:", _component.errorString())
-            }
-        } else {
-            console.error("MVO debug: panel component failed to load:", _component.errorString())
+        if (_component.status !== Component.Ready) {
+            QGroundControl.showMessageDialog(mainWindow, qsTr("MVO debug"),
+                qsTr("Panel failed to load:\n%1").arg(_component.errorString()))
+            return
         }
+        _win = _component.createObject(mainWindow)
+        if (!_win) {
+            QGroundControl.showMessageDialog(mainWindow, qsTr("MVO debug"),
+                qsTr("Panel failed to create:\n%1").arg(_component.errorString()))
+            return
+        }
+        _win.visible = true
+        _win.raise()
+        _win.requestActivate()
     }
 }
