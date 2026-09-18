@@ -36,6 +36,7 @@ public:
     Q_PROPERTY(QmlObjectListModel* agents       READ agents       CONSTANT)   ///< VehicleAgent*
     Q_PROPERTY(bool                degraded     READ degraded     NOTIFY degradedChanged)  ///< orthogonal flag, not a state
     Q_PROPERTY(bool                armable      READ armable      NOTIFY armableChanged)    ///< false until FailsafeVerifier passes (RE6)
+    Q_PROPERTY(bool                engageAuthorized READ engageAuthorized NOTIFY engageAuthorizedChanged)  ///< second gate for terminal engagement (Addendum A)
 
     explicit OrchestrationManager(QObject *parent = nullptr);
 
@@ -46,6 +47,7 @@ public:
     QmlObjectListModel* agents()       const { return _agents; }
     bool                degraded()     const { return _degraded; }
     bool                armable()      const { return _armable; }
+    bool                engageAuthorized() const { return _engageAuthorized; }
 
     // Operator intent (wizard-driven) — ICD §3.1.
     Q_INVOKABLE void beginMission();                                    // IDLE -> DEFINING_RING
@@ -60,11 +62,17 @@ public:
     Q_INVOKABLE void terminate();                                     // -> TERMINATING
     Q_INVOKABLE void reslot(int vehicleId, double newBearingDeg);      // ON_STATION re-commit
 
+    // Terminal engagement (Addendum A) — additive; a SECOND gate, distinct from ARM.
+    Q_INVOKABLE void authorizeEngagement(bool authorized);            // set/clear the engagement gate
+    Q_INVOKABLE void engageAll();                                    // coordinate Engagement (sub=21) on every ON_STATION agent
+    Q_INVOKABLE void engage(int vehicleId);                          // per-agent engage
+
 signals:
     void missionStateChanged(MissionState s);
     void ringChanged();
     void degradedChanged(bool degraded);
     void armableChanged(bool armable);
+    void engageAuthorizedChanged(bool engageAuthorized);
     void advisory(const QString &text);   ///< surfaced to the operator; never actuated (ICD §3.1)
 
 private:
@@ -81,5 +89,6 @@ private:
     QmlObjectListModel* _agents   = nullptr;    ///< VehicleAgent*
     bool                _degraded = false;
     bool                _armable  = false;
+    bool                _engageAuthorized = false;   ///< terminal-engagement gate (Addendum A)
     CommitSchedule      _schedule;              ///< staggered-commit offsets from the last TransitPlanner run
 };

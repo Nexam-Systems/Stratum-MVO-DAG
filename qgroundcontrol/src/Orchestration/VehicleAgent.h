@@ -27,7 +27,10 @@ public:
         CLIMB_TO_TRANSIT_LEVEL, COMMIT_QUEUED, STANDOFF_COMMANDED,
         RUN_IN,        // nav_state == 9
         ON_STATION,    // nav_state 9 -> 4 AND arrival predicate (ICD §7.4)
-        HOLD, RESLOT, RTL, LINK_LOST
+        HOLD,
+        ENGAGE_COMMANDED,  // operator engage issued (Addendum A); mode write sent
+        ENGAGING,          // coordinate Engagement (sub=21) confirmed via flightMode
+        RESLOT, RTL, LINK_LOST
     };
     Q_ENUM(AgentState)
 
@@ -56,6 +59,7 @@ public:
     void beginCommit();     ///< executes the ICD §7 commit sequence for this one agent
     void hold();            ///< -> Hold (operator-authorised path only)
     void abortToRtl();      ///< operator-directed RTL
+    void engage();          ///< operator-commanded coordinate Engagement (sub=21); ON_STATION only (Addendum A)
     void markLinkLost();    ///< driven by OrchestrationManager on vehicleRemoved
 
 signals:

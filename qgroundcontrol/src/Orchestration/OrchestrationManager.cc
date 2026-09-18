@@ -255,6 +255,48 @@ void OrchestrationManager::execute()
     }
 }
 
+void OrchestrationManager::authorizeEngagement(bool authorized)
+{
+    // The second gate (Addendum A.5). Distinct from armable; the RE6 ARM gate is unchanged.
+    if (_engageAuthorized == authorized) {
+        return;
+    }
+    _engageAuthorized = authorized;
+    emit engageAuthorizedChanged(_engageAuthorized);
+    emit advisory(authorized ? QStringLiteral("engagement AUTHORISED (second gate set)")
+                             : QStringLiteral("engagement authorisation cleared"));
+}
+
+void OrchestrationManager::engageAll()
+{
+    // Coordinate Engagement (sub=21) on every ON_STATION agent (Addendum A). No abort path;
+    // no autonomous manoeuvre (RE4). Existing single-vehicle abort is untouched.
+    if (!_engageAuthorized) {
+        emit advisory(QStringLiteral("engageAll blocked: engagement not authorised (Addendum A.5)"));
+        return;
+    }
+    int commanded = 0;
+    for (int i = 0; i < _agents->count(); ++i) {
+        auto *agent = qobject_cast<VehicleAgent *>(_agents->get(i));
+        if (agent && agent->state() == VehicleAgent::ON_STATION) {
+            agent->engage();
+            ++commanded;
+        }
+    }
+    emit advisory(QStringLiteral("engageAll: commanded %1 ON_STATION agent(s) to Engagement (sub=21)").arg(commanded));
+}
+
+void OrchestrationManager::engage(int vehicleId)
+{
+    if (!_engageAuthorized) {
+        emit advisory(QStringLiteral("engage blocked: engagement not authorised (Addendum A.5)"));
+        return;
+    }
+    if (auto *agent = _agentForVehicle(vehicleId)) {
+        agent->engage();
+    }
+}
+
 void OrchestrationManager::holdAll()
 {
     // Operator-authorised HOLD ALL — the only autonomous-capable mode change (RE4).

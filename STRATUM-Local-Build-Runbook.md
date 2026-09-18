@@ -70,113 +70,33 @@ cd C:\dev\Stratum-MVO-DAG
 
 ---
 
-## 2. Build + package (one shot)
-
-The repo's `build-windows.ps1` configures Release (tests off) with `qt-cmake`,
-builds, deploys the Qt runtime with `windeployqt`, and produces **both** the NSIS
-`.exe` and the WiX `.msi`. Point it at your Qt kit:
-
+## Go to right directory
 ```powershell
-.\build-windows.ps1 -QtKit C:\Qt\6.10.3\msvc2022_64
+cd C:\dev\mvo
 ```
-
-Useful overrides:
-
+---
+## Remove any old builds
 ```powershell
-.\build-windows.ps1 -Jobs 4 -QtKit C:\Qt\6.10.3\msvc2022_64
+Remove-Item -Recurse -Force .\build\windows
 ```
-
-Resume or diagnose a single stage instead of restarting the whole run:
-
+---
+## Configure
 ```powershell
 .\build-windows.ps1 -Stage Configure -QtKit C:\Qt\6.10.3\msvc2022_64
-.\build-windows.ps1 -Stage Build
-.\build-windows.ps1 -Stage Package -WixBin C:\tools\wix3 -NsisDir "C:\Program Files (x86)\NSIS"
 ```
-
-The first `configure` is slow — `qt-cmake` resolves the full Qt module set. That
-is expected, not a hang. Build files and the run log land under `build\windows\`.
-
 ---
-
-## 3. Collect the installer / run
-
-Outputs:
-
-- **MSI:** `build\windows\msi\STRATUM-<version>-x64.msi`
-- **NSIS installer:** `build\windows\STRATUM-installer-*.exe`
-
-Install by double-clicking the MSI. Installers are **unsigned** (same as CI).
-
-To test without installing, run the deployed executable directly:
-
+## Actual Build
 ```powershell
-.\build\Release\STRATUM.exe
+.\build-windows.ps1 -Stage Build -Jobs 4
 ```
-
 ---
-
-## 4. Manual sequence (fallback / understanding)
-
-This is exactly what CI runs, so it is proven. Use it if you would rather drive
-the steps yourself or a scripted stage fails.
-
+## Release EXE
 ```powershell
-# Developer PowerShell for VS 2022
-cd C:\dev\Stratum-MVO-DAG\qgroundcontrol
-
-# Configure (Release, no tests) — for a distributable app
-& "C:\Qt\6.10.3\msvc2022_64\bin\qt-cmake.bat" -B build -G Ninja `
-    -DCMAKE_BUILD_TYPE=Release `
-    -DQGC_BUILD_TESTING=OFF
-
-# Build
-cmake --build build --parallel
-
-# Deploy Qt runtime + build the NSIS installer in one step
-cmake --install build --prefix staging
+.\build\windows\Release\STRATUM.exe
 ```
-
-For a first-time development build with tests, use `-DCMAKE_BUILD_TYPE=Debug
--DQGC_BUILD_TESTING=ON`, then run `.\build\Debug\STRATUM.exe`.
-
-Optional tests:
-
-```powershell
-cd build
-ctest --output-on-failure -L "Unit|Integration" -LE "Flaky|Network"
-```
-
 ---
-
-## 5. Common pitfalls
-
-- **MinGW kit selected in Qt.** ABI mismatch against MSVC-built Qt → link failure.
-  Re-run the Qt installer and pick **MSVC 2022 64-bit**.
-- **Qt < 6.10.** `configure` aborts — the tree enforces `qt_minimum_version 6.10.0`.
-- **Plain PowerShell + Ninja.** `cl.exe` not found. Use **Developer PowerShell for
-  VS 2022** (or `vcvars64.bat`).
-- **Missing Qt module.** `configure` fails naming the module — add it via the Qt
-  Maintenance Tool (see the module list in §0).
-- **Building under OneDrive.** See the warning above — the most common cause of a
-  flaky local build.
-- **GStreamer.** Skip it first. When added, it must be the **MSVC x64** build; any
-  other ABI will not link.
-
----
-
-## Appendix — CI is now manual-only, and reclaiming storage
-
-`ci-build.yml` no longer builds on push/PR; it runs only from the **Actions** tab
-(**Run workflow**). `build-on-tag.yml` is unchanged — a `v*` tag still builds a
-release. Disabling future runs does **not** free the quota already consumed;
-delete the stored artifacts:
-
-```powershell
-# GitHub CLI, authenticated to the account
-gh api /repos/Nexam-Systems/Stratum-MVO-DAG/actions/artifacts --paginate --jq ".artifacts[].id" |
-  ForEach-Object { gh api -X DELETE /repos/Nexam-Systems/Stratum-MVO-DAG/actions/artifacts/$_ }
+## Release Installer
+```powerhshell
+.\build-windows.ps1 -Stage Package -QtKit C:\Qt\6.10.3\msvc2022_64 -WixBin C:\tools\wix3
 ```
-
-Or delete per-run in the UI. Usage is shown under **Settings → Billing → Storage
-for Actions**.
+---

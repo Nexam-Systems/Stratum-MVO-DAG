@@ -36,7 +36,7 @@ Window {
     readonly property var _agentStateNames: [
         "UNASSIGNED","ASSIGNED","PREFLIGHT","LAUNCH_QUEUED","TAKEOFF",
         "CLIMB_TO_TRANSIT_LEVEL","COMMIT_QUEUED","STANDOFF_COMMANDED",
-        "RUN_IN","ON_STATION","HOLD","RESLOT","RTL","LINK_LOST" ]
+        "RUN_IN","ON_STATION","HOLD","ENGAGE_COMMANDED","ENGAGING","RESLOT","RTL","LINK_LOST" ]
     readonly property var _missionStateNames: [
         "IDLE","DEFINING_RING","ASSIGNING_SLOTS","PLAN_REVIEW","PREFLIGHT",
         "EXECUTING","ON_STATION","RESLOTTING","TERMINATING" ]
@@ -57,11 +57,12 @@ Window {
         spacing:         8
 
         QGCLabel {
-            text: qsTr("Mission: %1     Vehicles: %2     Armable: %3     Degraded: %4")
+            text: qsTr("Mission: %1   Vehicles: %2   Armable: %3   Degraded: %4   EngageAuth: %5")
                     .arg(root._missionStateNames[root.orch.missionState])
                     .arg(root.mvm.vehicles.count)
                     .arg(root.orch.armable ? "yes" : "no")
                     .arg(root.orch.degraded ? "yes" : "no")
+                    .arg(root.orch.engageAuthorized ? "YES" : "no")
         }
 
         RowLayout {
@@ -117,6 +118,17 @@ Window {
                 text: qsTr("7. Execute — commit all")
                 Layout.fillWidth: true
                 onClicked: root.orch.execute()
+            }
+            QGCButton {
+                text: qsTr("8. %1 engagement").arg(root.orch.engageAuthorized ? "De-authorize" : "Authorize")
+                Layout.fillWidth: true
+                onClicked: root.orch.authorizeEngagement(!root.orch.engageAuthorized)
+            }
+            QGCButton {
+                text: qsTr("9. Engage all (coord, sub=21)")
+                Layout.fillWidth: true
+                enabled: root.orch.engageAuthorized
+                onClicked: root.orch.engageAll()
             }
             QGCButton {
                 text: qsTr("Hold all")

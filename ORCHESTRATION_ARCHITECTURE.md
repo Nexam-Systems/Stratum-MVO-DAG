@@ -594,14 +594,13 @@ architecture is deliberately parameterised pending an operational answer.
 4. **On losing a vehicle mid-mission, does the ring re-solve?** The architecture
    defaults to *hold as briefed, offer the re-plan*. Automatic re-spacing is
    implementable but is a re-commit under degraded conditions.
-5. **Does an orchestrated standoff ever transition to engagement?** This is the
-   scoping question that matters most. The engagement modes exist in the firmware
-   and in STRATUM's UI. Multi-vehicle coordination *plus* terminal engagement is a
-   materially heavier safety case — a different authorisation chain, a different
-   abort architecture, and a different verification burden. It should be either
-   scoped in now with eyes open, or explicitly excluded from this subsystem's
-   remit. It should not be left to arrive by accident because both capabilities
-   happen to live in the same application.
+5. **Does an orchestrated standoff ever transition to engagement? — RESOLVED
+   2026-09-19: YES.** The remit includes an operator-commanded ensemble transition to
+   coordinate Engagement (PX4 custom sub-mode 21) against the 31010 ring target each
+   agent already holds. See **Addendum A** for the architecture delta: the additive
+   command path, the FSM extension, the abort semantics (operator-only, no self-abort
+   on target loss, existing abort surface unmodified), and the second authorisation
+   gate. The heavier safety case is acknowledged and carried as revised **R7**.
 
 ---
 
@@ -615,7 +614,7 @@ architecture is deliberately parameterised pending an operational answer.
 | R4 | `STDF_SEQ ∈ {2,4}` silently collapses transit stratification | Design-coupling | D8 makes `STDF_SEQ` deconfliction-critical and verified |
 | R5 | Custom MAVLink IDs 42001–42006 are a project-local allocation | Interoperability | Accept for now; document; revisit before any mixed-dialect fleet |
 | R6 | The custom firmware modes were statically reviewed but, by their own documentation, never compile-verified in the environment that produced them | Process | S0 exit criterion is a real multi-instance SITL run, not a static argument |
-| R7 | `EngagementDive` has no self-abort on target loss, unlike `VisionEngagement` | Safety asymmetry | Out of scope for v1; blocking for any multi-vehicle engagement (§10.5) |
+| R7 | Multi-vehicle terminal engagement: `EngagementDive` has no self-abort on target loss; abort is operator-only (Addendum A). N simultaneous dives on one operator = saturation | Safety, emergent | **In scope 2026-09-19** (§10.5 resolved). Debug excludes abort. For flight: per-agent `ABRT_*` arming + stratified abort-recovery altitudes; abort deconfliction added to the S4 fault matrix |
 
 ---
 
@@ -635,3 +634,59 @@ block, where the stock defaults would have three vehicles making independent,
 uncoordinated decisions at exactly the moment the ground station stops watching.
 
 Decisions dictate destiny.
+
+
+---
+
+## Addendum A — Engagement extension (RESOLVED 2026-09-19)
+
+This addendum records the ruling on §10.5 and the architecture delta it imposes. It is
+*additive*: it extends the subsystem's remit without reopening §1–§9.
+
+### A.1 Ruling
+An orchestrated standoff **does** transition to terminal engagement. The remit now spans:
+designate → ring → deconflicted run-in → on-station → **operator-commanded ensemble
+engagement**. The mode for the orchestrated transition is **coordinate Engagement (PX4
+custom sub-mode 21)**, against the 31010 ring target each agent already holds.
+
+### A.2 Command path — additive, no new seam
+Engagement reuses the existing per-vehicle path: the same `setFlightMode` used for
+Standoff, into the existing custom mode `"Engagement"` (sub=21). The target is the 31010
+setpoint already commanded during the standoff commit. D1–D3 therefore hold unchanged —
+STRATUM commands intent per pinned `Vehicle*`; PX4 executes; no new MAVLink, no firmware
+delta, no single-vehicle file edited (RE1/RE2/RE3 preserved).
+
+### A.3 Behavioural delta
+Agent FSM (extends §5.2): `ON_STATION → ENGAGE_COMMANDED → ENGAGING`, entered only on
+explicit operator command through the second authorisation gate (A.5). Mission FSM
+(extends §5.1): an `ENGAGING` phase after `ON_STATION`. No change to the run-in or arrival
+machinery.
+
+### A.4 Abort — unchanged, operator-only, no self-abort
+In the multi-vehicle engagement case there is **no self-abort on target loss**: a vehicle
+that loses its target continues per the existing single-vehicle terminal behaviour
+(`EngagementDive` levels and waits). Abort exists **only** as an explicit operator action
+from STRATUM — the existing Abort mode (sub=22 → recover to `ABRT_*` → auto-Hold). The
+existing single-vehicle abort surface (`EngagementController`, `GuidedActionAbort`, the
+abort overlay, `ABRT_*` arming) is **not modified**; the orchestration layer adds no abort
+path and issues no autonomous abort (RE4 preserved). For bring-up and test, abort is out
+of scope — the operator does not press it.
+
+### A.5 Authorisation — a second gate, heavier than ARM
+Engagement is a terminal action and requires its own explicit operator authorisation,
+distinct from `armable`. ARM gates the flight (D8 failsafe block); engagement gates the
+terminal transition. The ensemble engage command is a no-op until that authorisation is
+set.
+
+### A.6 D8 / failsafe growth (deferred to real flight, not debug)
+The D1 payoff — link loss is safe because separation was guaranteed pre-commit — does
+**not** extend to engagement: a terminal dive is not deconflicted-by-geometry. Two items
+follow for real flight (not the debug scope): `ABRT_*` arming becomes a per-agent
+preflight item, and abort-recovery destinations across the ensemble require the same
+stratification discipline as `RTL_RETURN_ALT` — three simultaneous recoveries are the
+crossing case again.
+
+### A.7 Emergent risk (named, not resolved)
+No self-abort + N simultaneous terminal dives + one operator = operator saturation. Inert
+under the debug scope (no abort exercised). A first-order item for the flight-test safety
+case. Carried as revised **R7**.

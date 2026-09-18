@@ -339,7 +339,10 @@ UNASSIGNED, ASSIGNED, PREFLIGHT, LAUNCH_QUEUED, TAKEOFF,
 CLIMB_TO_TRANSIT_LEVEL, COMMIT_QUEUED, STANDOFF_COMMANDED,
 RUN_IN,            // nav_state == 9
 ON_STATION,        // nav_state 9 -> 4 AND arrival predicate (§7.4)
-HOLD, RESLOT, RTL, LINK_LOST
+HOLD,
+ENGAGE_COMMANDED,  // operator engage issued (Addendum A); mode write sent
+ENGAGING,          // coordinate Engagement (sub=21) confirmed via flightMode
+RESLOT, RTL, LINK_LOST
 ```
 
 `PREFLIGHT` (agent) gates on all of: armable; GPS fix and `gps.horizontalAccuracy` within the mission's separation budget; `homePosition` set; D8 block verified; `MAV_SYS_ID` unique.
@@ -498,3 +501,39 @@ This document is the stable surface. The build agent may freely choose internal 
 The open decisions in NXM-SW-ARCH-STRATUM-MVO-001 §10 (common vs per-slot hold height; arrival-skew requirement; launch topology; ring re-solve on vehicle loss; standoff→engagement transition) are the parameters this contract is deliberately written around. Each is a `Q_PROPERTY` or a planner input today, not a hard-coded assumption — so a ruling changes a value, not the interface.
 
 Decisions dictate destiny. This contract is where they are enforced.
+
+
+---
+
+## Addendum A — Engagement extension (additive, 2026-09-19)
+
+Records the §10.5 ruling (architecture Addendum A) as an interface delta. *Additive*: it
+extends the consumed and provided surfaces without changing §1–§11. Every RE rule holds.
+
+### A.1 Consumed surface — engagement (existing, per-vehicle)
+
+| Member | Use by orchestration |
+|---|---|
+| `flightMode` (write) = `"Engagement"` | Enter coordinate Engagement (PX4 sub=21) on the pinned vehicle. Same `setFlightMode` seam as Standoff; issued only after the agent is `ON_STATION` **and** engagement is authorised. |
+| 31010 standoff setpoint (already sent) | Supplies the engagement target lat/lon — no new setpoint, no new wire contract (RE3). |
+
+The existing single-vehicle **Abort** surface — `EngagementController`, `GuidedActionAbort`, `EngagementAbortOverlay`, the `ABRT_*` parameters — is driven by the **operator** path only. Orchestration does **not** call, wrap, or modify it (hard constraint), and issues no autonomous abort (RE4).
+
+### A.2 Provided surface — `OrchestrationManager`
+
+| Member | Contract |
+|---|---|
+| `Q_INVOKABLE void authorizeEngagement(bool authorized)` | The second gate. Engagement commands are no-ops until set `true`. Separate from `armable` — the RE6 ARM gate is unchanged. |
+| `Q_INVOKABLE void engageAll()` | Commands coordinate Engagement (sub=21) on every `ON_STATION` agent. No-op unless authorised. Issues no abort. |
+| `Q_INVOKABLE void engage(int vehicleId)` | Per-agent engage; same authorisation guard. |
+| `Q_PROPERTY(bool engageAuthorized ...)` | Reflects the second gate for the operator surface. |
+
+### A.3 `AgentState` delta (§5.2)
+Adds `ENGAGE_COMMANDED` (mode write sent) and `ENGAGING` (confirmed via
+`flightMode == "Engagement"`), entered from `ON_STATION` only.
+
+### A.4 Commit note
+"Geometry precedes mode" (RE5) is satisfied trivially: the engagement target is the 31010
+setpoint already on the vehicle, so `engage` is a single `setFlightMode("Engagement")`
+with no new setpoint. No autonomous abort; no self-abort on target loss (architecture
+Addendum A.4).

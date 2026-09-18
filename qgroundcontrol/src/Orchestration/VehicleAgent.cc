@@ -88,6 +88,24 @@ void VehicleAgent::abortToRtl()
     _setState(RTL);
 }
 
+void VehicleAgent::engage()
+{
+    // Operator-commanded terminal engagement (Addendum A). Coordinate Engagement
+    // (PX4 custom sub-mode 21) reuses the same setFlightMode seam as Standoff, against
+    // the 31010 target already on the vehicle — no new setpoint, no new wire contract.
+    // Only from ON_STATION. This layer issues NO abort and NO self-abort (Addendum A.4).
+    if (!_vehicle) {
+        return;
+    }
+    if (_state != ON_STATION) {
+        qWarning("VehicleAgent::engage: not ON_STATION (state=%d); engage refused", int(_state));
+        return;
+    }
+    _wire();
+    _setState(ENGAGE_COMMANDED);
+    _vehicle->setFlightMode(QStringLiteral("Engagement"));   // DO_SET_MODE main=4, sub=21
+}
+
 void VehicleAgent::markLinkLost()
 {
     _linkHealthy = false;
@@ -226,6 +244,11 @@ void VehicleAgent::_onFlightModeChanged(const QString &mode)
     // Standoff activation confirmed: nav_state == 9.
     if (_state == STANDOFF_COMMANDED && mode == QStringLiteral("Standoff")) {
         _setState(RUN_IN);
+        return;
+    }
+    // Coordinate Engagement (sub=21) confirmed (Addendum A): mode reads back "Engagement".
+    if (_state == ENGAGE_COMMANDED && mode == QStringLiteral("Engagement")) {
+        _setState(ENGAGING);
         return;
     }
     // nav_state 9 -> 4: the firmware settled into Hold on arrival (F2). Confirm the
