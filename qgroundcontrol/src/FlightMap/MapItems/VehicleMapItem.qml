@@ -50,7 +50,7 @@ MapQuickItem {
         id:         vehicleItem
         width:      vehicleIcon.width
         height:     vehicleIcon.height
-        opacity:    _adsbVehicle || vehicle === _activeVehicle ? 1.0 : 0.5
+        opacity:    1.0   // STRATUM: all vehicles at full prominence on the map (no active-vehicle dimming)
 
         MultiEffect {
             source: vehicleIcon

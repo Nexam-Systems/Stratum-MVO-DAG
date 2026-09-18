@@ -400,26 +400,30 @@ FlightMap {
         showText: !pipMode
     }
 
-    // Add trajectory lines to the map
-    MapPolyline {
-        id:         trajectoryPolyline
-        line.width: 3
-        line.color: "red"
-        z:          QGroundControl.zOrderTrajectoryLines
-        visible:    !pipMode
+    // STRATUM: per-vehicle trajectory lines. Every vehicle's track is drawn at once,
+    // not just the active vehicle's, so the map is a true multi-vehicle common
+    // operating picture. Each track is coloured distinctly by vehicle index.
+    MapItemView {
+        model: QGroundControl.multiVehicleManager.vehicles
 
-        Connections {
-            target:                 QGroundControl.multiVehicleManager
-            function onActiveVehicleChanged(activeVehicle) {
-                trajectoryPolyline.path = _activeVehicle ? _activeVehicle.trajectoryPoints.list() : []
+        delegate: MapPolyline {
+            id:         vehicleTrajectory
+            line.width: 3
+            line.color: _trackColors[index % _trackColors.length]
+            z:          QGroundControl.zOrderTrajectoryLines
+            visible:    !pipMode
+
+            property var _vehicle: object
+            readonly property var _trackColors: ["#FF3B30", "#0A84FF", "#FFD60A", "#30D158", "#BF5AF2", "#FF9F0A"]
+
+            Component.onCompleted: path = _vehicle ? _vehicle.trajectoryPoints.list() : []
+
+            Connections {
+                target:                                vehicleTrajectory._vehicle ? vehicleTrajectory._vehicle.trajectoryPoints : null
+                function onPointAdded(coordinate)      { vehicleTrajectory.addCoordinate(coordinate) }
+                function onUpdateLastPoint(coordinate) { vehicleTrajectory.replaceCoordinate(vehicleTrajectory.pathLength() - 1, coordinate) }
+                function onPointsCleared()             { vehicleTrajectory.path = [] }
             }
-        }
-
-        Connections {
-            target:                             _activeVehicle ? _activeVehicle.trajectoryPoints : null
-            function onPointAdded(coordinate) { trajectoryPolyline.addCoordinate(coordinate) }
-            function onUpdateLastPoint(coordinate) { trajectoryPolyline.replaceCoordinate(trajectoryPolyline.pathLength() - 1, coordinate) }
-            function onPointsCleared() { trajectoryPolyline.path = [] }
         }
     }
 
@@ -870,6 +874,71 @@ FlightMap {
         visible:        standoffController._standoffActive && standoffController._targetCoordinate.isValid
         markerColor:    "#D11A35"
         markerLabel:    qsTr("Target")
+    }
+
+    // ==================================================================
+    // STRATUM MVO (S1 debug): standoff-ring overlay driven by
+    // QGroundControl.orchestration. Additive, read-only, green to
+    // distinguish it from the single-vehicle crimson standoff (RE1).
+    // The real RingEditorOverlay (ICD §6.2) replaces this at S3.
+    // ==================================================================
+
+    // The commanded standoff ring: circle of radius R centred on the target.
+    MapCircle {
+        id:             mvoRingCircle
+        center:         QGroundControl.orchestration.ring.target
+        radius:         Math.max(QGroundControl.orchestration.ring.radiusM, 1)
+        color:          Qt.rgba(0.18, 0.49, 0.20, 0.12)   // green fill, low opacity
+        border.color:   "#2E7D32"                          // green outline
+        border.width:   2
+        visible:        QGroundControl.orchestration.ring.target.isValid &&
+                        QGroundControl.orchestration.ring.radiusM > 0
+        z:              QGroundControl.zOrderMapItems
+    }
+
+    // The ring's target point (green variant of the standoff target marker).
+    StandoffTargetMarker {
+        coordinate:     QGroundControl.orchestration.ring.target
+        visible:        QGroundControl.orchestration.ring.target.isValid
+        markerColor:    "#2E7D32"
+        markerLabel:    qsTr("MVO Target")
+    }
+
+    // One badge per agent, placed on its assigned slot (bearing on the ring).
+    MapItemView {
+        model: QGroundControl.orchestration.agents
+        delegate: MapQuickItem {
+            id:             mvoSlotMarker
+            property var    _agent: object
+            anchorPoint.x:  sourceItem.width  / 2
+            anchorPoint.y:  sourceItem.height / 2
+            z:              QGroundControl.zOrderMapItems + 1
+            visible:        _agent && _agent.slot && QGroundControl.orchestration.ring.target.isValid
+            coordinate: {
+                var r = QGroundControl.orchestration.ring
+                var b = (_agent && _agent.slot) ? _agent.slot.bearingDeg : 0
+                // Reference target + radius so the binding re-evaluates on ring edits.
+                return (r.target.isValid && r.radiusM > 0) ? r.slotCoordinate(b)
+                                                           : QtPositioning.coordinate()
+            }
+            sourceItem: Rectangle {
+                width:  mvoSlotLabel.implicitWidth  + ScreenTools.defaultFontPixelWidth
+                height: mvoSlotLabel.implicitHeight + ScreenTools.defaultFontPixelWidth * 0.6
+                radius: 3
+                color:  Qt.rgba(0.18, 0.49, 0.20, 0.85)
+                border.color: "white"
+                border.width: 1
+                QGCLabel {
+                    id:                 mvoSlotLabel
+                    anchors.centerIn:   parent
+                    color:              "white"
+                    font.pointSize:     ScreenTools.smallFontPointSize
+                    text:               qsTr("V%1 · %2\u00B0")
+                                            .arg(mvoSlotMarker._agent && mvoSlotMarker._agent.vehicle ? mvoSlotMarker._agent.vehicle.id : "?")
+                                            .arg(mvoSlotMarker._agent && mvoSlotMarker._agent.slot ? mvoSlotMarker._agent.slot.bearingDeg.toFixed(0) : "?")
+                }
+            }
+        }
     }
 
     QGCPopupDialogFactory {

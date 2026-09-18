@@ -5,7 +5,6 @@ import QtPositioning
 
 import QGroundControl
 import QGroundControl.Controls
-import QGroundControl.Palette
 import QGroundControl.FlyView   // OrchestrationManager / VehicleAgent enums
 
 // STRATUM MVO — S1 debug harness. NOT a product surface: it exists to exercise the
