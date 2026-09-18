@@ -49,6 +49,13 @@ void VehicleAgent::setTransitLevel(double relativeMeters)
     emit transitLevelChanged();
 }
 
+void VehicleAgent::setPlanMetrics(double runInLengthM, double etaSeconds)
+{
+    _runInLengthM = runInLengthM;
+    _etaSeconds   = etaSeconds;
+    emit planChanged();
+}
+
 void VehicleAgent::beginCommit()
 {
     // ICD §7.1 — geometry precedes mode (RE5). Steps 1 -> 2 -> 3, sequenced on
@@ -221,7 +228,7 @@ void VehicleAgent::_onFlightModeChanged(const QString &mode)
         _setState(RUN_IN);
         return;
     }
-    // nav_state 9 -> 3: the firmware settled into Hold on arrival (F2). Confirm the
+    // nav_state 9 -> 4: the firmware settled into Hold on arrival (F2). Confirm the
     // arrival predicate before declaring ON_STATION (a vehicle can reach Hold by other
     // routes — operator action, a failsafe).
     if (_state == RUN_IN && mode == QStringLiteral("Hold")) {
@@ -236,7 +243,7 @@ void VehicleAgent::_onFlightModeChanged(const QString &mode)
 
 bool VehicleAgent::_arrivalPredicate() const
 {
-    // ICD §7.4 (S1 form). Condition 1 (mode 9->3) is established by the caller.
+    // ICD §7.4 (S1 form). Condition 1 (mode 9->4) is established by the caller.
     // Conditions 2 and 3: horizontal distance to the slot coordinate within
     // acceptance, and altitude within tolerance of the hold height H. S2 refines
     // the radius with NAV_ACC_RAD and the altitude test with the AMSL form.

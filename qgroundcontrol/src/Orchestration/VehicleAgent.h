@@ -26,7 +26,7 @@ public:
         UNASSIGNED, ASSIGNED, PREFLIGHT, LAUNCH_QUEUED, TAKEOFF,
         CLIMB_TO_TRANSIT_LEVEL, COMMIT_QUEUED, STANDOFF_COMMANDED,
         RUN_IN,        // nav_state == 9
-        ON_STATION,    // nav_state 9 -> 3 AND arrival predicate (ICD §7.4)
+        ON_STATION,    // nav_state 9 -> 4 AND arrival predicate (ICD §7.4)
         HOLD, RESLOT, RTL, LINK_LOST
     };
     Q_ENUM(AgentState)
@@ -52,6 +52,7 @@ public:
     void setRing(StandoffRing *ring);   ///< the derived ring geometry (target, R, H) this agent commits to
     void assignSlot(RingSlot *slot);
     void setTransitLevel(double relativeMeters);
+    void setPlanMetrics(double runInLengthM, double etaSeconds);   ///< planner metrics for display (ICD §3.2)
     void beginCommit();     ///< executes the ICD §7 commit sequence for this one agent
     void hold();            ///< -> Hold (operator-authorised path only)
     void abortToRtl();      ///< operator-directed RTL
@@ -76,7 +77,7 @@ private:
     void _stepEnsureTransitLevel();   // 1: guidedModeTakeoff / guidedModeChangeAltitude
     void _stepSendStandoffSetpoint(); // 2: sendMavCommandIntWithHandler(31010, ...) ACK-matched
     void _stepSwitchMode();           // 3: flightMode = "Standoff"; RUN_IN on nav_state == 9
-    bool _arrivalPredicate() const;   // ICD §7.4: (9->3) AND slot-dist < acc AND alt within tol
+    bool _arrivalPredicate() const;   // ICD §7.4: (9->4) AND slot-dist < acc AND alt within tol
 
     // Telemetry-driven progression.
     void _onFlightModeChanged(const QString &mode);

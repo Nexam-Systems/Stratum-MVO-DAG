@@ -101,7 +101,7 @@ extension of a proven contract.
 
 **F2 — Arrival is already observable for free.** `standoff.cpp:139-142` calls
 `_navigator->request_hold_mode()` exactly once when the terminal pose settles.
-The vehicle therefore transitions `nav_state 9 → 3` on arrival. STRATUM needs no
+The vehicle therefore transitions `nav_state 9 → 4` on arrival. (In this PX4-NX build the on-arrival Hold is AUTO_LOITER = nav_state 4; earlier drafts wrote 3. Confirmed in SITL: each autopilot self-issues the Loiter switch on settle.) STRATUM needs no
 new telemetry and no arrival-detection logic on the vehicle side.
 
 **F3 — The run-in happens at whatever altitude the vehicle is at when Standoff
@@ -386,7 +386,7 @@ UNASSIGNED ─▶ ASSIGNED ─▶ PREFLIGHT ─▶ LAUNCH_QUEUED ─▶ TAKEOFF
                                                             │
                                                         RUN_IN        (nav_state == 9)
                                                             │
-                                                     ON_STATION       (nav_state 9→3)
+                                                     ON_STATION       (nav_state 9→4)
                                                             │
                               ┌──────────────┬──────────────┼──────────────┐
                            HOLD          RESLOT           RTL         LINK_LOST
@@ -405,7 +405,7 @@ mission's separation budget; home position set; D8 parameter block verified;
 3. Set flight mode → `DO_SET_MODE(main=4, sub=20)`; await `nav_state == 9`
    confirmed in `HEARTBEAT.custom_mode`, with bounded retry.
 4. *(v2 only)* `DO_CHANGE_SPEED` — **after** step 3, never before (F4).
-5. Observe `nav_state 9 → 3`, then confirm the arrival predicate before declaring
+5. Observe `nav_state 9 → 4`, then confirm the arrival predicate before declaring
    `ON_STATION`.
 
 Geometry precedes mode selection. PX4 tolerates either order, but a mode entered
@@ -414,10 +414,10 @@ avoided.
 
 ### 5.4 Arrival predicate
 
-The `9 → 3` transition alone is not sufficient, because a vehicle can reach Hold
+The `9 → 4` transition alone is not sufficient, because a vehicle can reach Hold
 by other routes (operator action, a failsafe). `ON_STATION` requires all three:
 
-1. `nav_state` transitioned `9 → 3`, **and**
+1. `nav_state` transitioned `9 → 4`, **and**
 2. horizontal distance to the computed slot coordinate < `NAV_ACC_RAD`, **and**
 3. `|altitudeAMSL − (home_alt + H)| <` altitude acceptance.
 

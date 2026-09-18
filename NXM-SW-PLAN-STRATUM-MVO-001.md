@@ -65,9 +65,11 @@ Each stage states its intent, the interfaces (per NXM-SW-ICD-STRATUM-MVO-001) it
 
 **Depends on.** S0 (needs three real SITL vehicles to command).
 
-**Exit gate.** From the debug panel, one action commits three agents; SITL logs show, per agent, 31010 ACK **before** `DO_SET_MODE`, `nav_state 9`, then `9→3`, with each vehicle on its assigned bearing. The RE2 static check passes (no `activeVehicle` in the module). This is the architecture's S1 criterion made concrete.
+**Exit gate.** From the debug panel, one action commits three agents; SITL logs show, per agent, 31010 ACK **before** `DO_SET_MODE`, `nav_state 9`, then `9→4`, with each vehicle on its assigned bearing. The RE2 static check passes (no `activeVehicle` in the module). This is the architecture's S1 criterion made concrete.
 
 **Critical path.** Yes. Everything else binds to these objects.
+
+**Status — CLOSED 2026-09-18.** Exit gate demonstrated in SITL on a three-vehicle Execute. Per vehicle: `31010` ACK **before** `DO_SET_MODE`; entry to Standoff (`nav_state 9`); **autonomous** arrival hand-off to Hold (`nav_state 9→4`, AUTO_LOITER, self-issued by each vehicle's own autopilot — `source_system` = the vehicle, not the GCS); settled on assigned bearings ≈0/120/240 at the common hold height H. See DECISION-LOG.
 
 ---
 

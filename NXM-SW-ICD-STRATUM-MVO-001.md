@@ -95,7 +95,7 @@ All per-`Vehicle`, all live for three vehicles with no plumbing. Access in C++ v
 | Fact | Location | Type / units | Consumed for |
 |---|---|---|---|
 | `flightMode` | `Vehicle::flightMode()` | `QString` (`"Standoff"`, `"Hold"`, …) | Human-readable mode; agent FSM secondary check. |
-| `customMode` | `Vehicle::customMode()` → `uint32_t` | PX4 packed custom mode | Primary source of `nav_state`; decode to confirm `9` (Standoff) and the `9→3` transition (Hold). |
+| `customMode` | `Vehicle::customMode()` → `uint32_t` | PX4 packed custom mode | Primary source of `nav_state`; decode to confirm `9` (Standoff) and the `9→4` transition (Hold). |
 | `coordinate` | `Q_PROPERTY QGeoCoordinate coordinate` | lat/lon | Live position for `SeparationMonitor` and the arrival predicate. |
 | `altitudeAMSL` | `VehicleFactGroup::altitudeAMSL()` (`Fact*`, double, metres) | AMSL altitude | Transit-level confirmation; arrival predicate altitude check. |
 | `altitudeRelative` | `VehicleFactGroup::altitudeRelative()` (`Fact*`, double, metres) | Height above home | Takeoff/climb completion check. |
@@ -338,7 +338,7 @@ IDLE, DEFINING_RING, ASSIGNING_SLOTS, PLAN_REVIEW, PREFLIGHT, EXECUTING, ON_STAT
 UNASSIGNED, ASSIGNED, PREFLIGHT, LAUNCH_QUEUED, TAKEOFF,
 CLIMB_TO_TRANSIT_LEVEL, COMMIT_QUEUED, STANDOFF_COMMANDED,
 RUN_IN,            // nav_state == 9
-ON_STATION,        // nav_state 9 -> 3 AND arrival predicate (§7.4)
+ON_STATION,        // nav_state 9 -> 4 AND arrival predicate (§7.4)
 HOLD, RESLOT, RTL, LINK_LOST
 ```
 
@@ -405,7 +405,7 @@ This is an interface in the strongest sense: the *order* is firmware-coupled and
    guidedModeChangeGroundSpeedMetersSecond(v_i)   // AFTER step 3 confirmed, never before (F4)
 
 5. Arrival:
-   observe nav_state 9 -> 3, then confirm the arrival predicate (§7.4)
+   observe nav_state 9 -> 4, then confirm the arrival predicate (§7.4)
    AgentState: ON_STATION
 ```
 
@@ -420,11 +420,11 @@ The whole-mission commit issues step-1..3 per agent on the staggered `CommitSche
 
 ### 7.4 Arrival predicate (all three, belt-and-braces — architecture §5.4)
 `ON_STATION` requires, together:
-1. `nav_state` transitioned `9 → 3`, **and**
+1. `nav_state` transitioned `9 → 4`, **and**
 2. horizontal distance to `ring.slotCoordinate(θ_i)` `< NAV_ACC_RAD`, **and**
 3. `|altitudeAMSL − (home_alt + H)| <` altitude acceptance.
 
-The `9→3` transition alone is insufficient — a vehicle can reach Hold by other routes (operator action, failsafe). The predicate discriminates arrival from every other path into Hold.
+The `9→4` transition alone is insufficient — a vehicle can reach Hold by other routes (operator action, failsafe). The predicate discriminates arrival from every other path into Hold.
 
 ### 7.5 Re-slotting
 An `ON_STATION` vehicle is in Hold, not Standoff. Re-slotting repeats §7.1 with the new bearing. A vehicle still in `RUN_IN` *can* be re-slotted with a fresh 31010 alone (the firmware restarts the staged manoeuvre on any new setpoint), but that replays the in-place yaw and looks abrupt on video — prefer re-slotting from Hold.
@@ -476,7 +476,7 @@ Each interface ships with the check that proves it. These are the exit criteria 
 |---|---|
 | §2 consumed surface | Compiles and links against `4095ba3` headers; a smoke test commands three concurrent single-vehicle standoffs from code and observes three distinct bearings. |
 | `VehicleAgent` pinning (RE2) | Static check / review: no `activeVehicle` reference anywhere under `src/Orchestration/` or `src/FlyView/Orchestration/`. A unit test constructs two agents on two vehicles and confirms a command to agent A never touches vehicle B. |
-| Commit sequence (§7) | SITL log shows, per agent: 31010 ACK precedes `DO_SET_MODE`; `nav_state 9`; then `9→3`; arrival predicate satisfied. Speed trim (v2) appears only after `nav_state==9`. |
+| Commit sequence (§7) | SITL log shows, per agent: 31010 ACK precedes `DO_SET_MODE`; `nav_state 9`; then `9→4`; arrival predicate satisfied. Speed trim (v2) appears only after `nav_state==9`. |
 | Deconfliction (§4, D4) | SITL log analysis: pairwise separation ≥ `R_req` throughout; transit legs vertically separated by ≥ `ΔH`. |
 | `FailsafeVerifier` (RE6/D8) | A vehicle with `STDF_SEQ=2` or a duplicate `MAV_SYS_ID` blocks the mission with a finding naming it. |
 | `SeparationMonitor` (RE4/D6) | Injected close-approach raises an advisory and offers HOLD ALL; it issues no mode change on its own. |
