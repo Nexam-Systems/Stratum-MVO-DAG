@@ -16,6 +16,11 @@ Window {
     width:  480
     height: 660
     minimumWidth:  420
+    // Centre on the primary screen so the window can never open off-screen on a
+    // multi-monitor Windows setup (a silent "nothing appeared" failure mode).
+    x:      Screen.width  > 0 ? (Screen.width  - width)  / 2 : 100
+    y:      Screen.height > 0 ? (Screen.height - height) / 2 : 100
+    flags:  Qt.Window
     title:  qsTr("STRATUM MVO — S1 Debug Harness")
     color:  qgcPal.window
 

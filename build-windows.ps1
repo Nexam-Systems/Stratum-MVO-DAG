@@ -31,6 +31,11 @@ $vs = & $vswhere -latest -version '[17.0,18.0)' -products * -requires Microsoft.
 if (-not $vs) { throw 'MSVC 2022 C++ tools not found.' }
 # Import the developer environment into this process (a plain .bat call cannot do this).
 $devcmd = Join-Path $vs 'Common7\Tools\VsDevCmd.bat'
+# Guard against cmd.exe's 8191-char command-line limit: a bloated or duplicated
+# PATH (e.g. from re-running this script in the same shell, or launching it from a
+# Developer PowerShell that already loaded VS) makes VsDevCmd.bat fail with
+# "The input line is too long." Collapse duplicate PATH entries before the call.
+$env:Path = ($env:Path -split ';' | Where-Object { $_ -ne '' } | Select-Object -Unique) -join ';'
 $devEnvironment = & $env:ComSpec /d /c "call `"$devcmd`" -no_logo -arch=x64 -host_arch=x64 && set"
 if ($LASTEXITCODE -ne 0) { throw 'Could not initialize MSVC.' }
 foreach ($line in $devEnvironment) {
