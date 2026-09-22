@@ -54,8 +54,9 @@ Item {
         }
         return "#1E88E5"                        // connected, on the ground / ready
     }
-    // STRATUM: all ribbon content (logo, status text, mode, telemetry) renders black.
-    readonly property color _ribbonTextColor: "#000000"
+    // STRATUM: ribbon content (logo, status text, mode, telemetry) binds to qgcPal.text
+    // (STRATUM-Agent-Context.md §2/§4: dark palette resolves this to #F1F4F7).
+    readonly property color _ribbonTextColor: qgcPal.text
 
     function dropMainStatusIndicatorTool() {
         mainStatusIndicator.dropMainStatusIndicator();
@@ -97,8 +98,8 @@ Item {
                             id:                 qgcButton
                             objectName:         "toolbar_qgcLogo"
                             Layout.fillHeight:  true
-                            // STRATUM: NEXAM (NX) company mark on the left, tinted black to
-                            // match the rest of the ribbon content.
+                            // STRATUM: NEXAM (NX) company mark on the left, tinted to the
+                            // ribbon text token (qgcPal.text) so it matches other ribbon content.
                             icon.source:        "/res/NXLogo.svg"
                             logo:               true
                             logoColor:          _ribbonTextColor

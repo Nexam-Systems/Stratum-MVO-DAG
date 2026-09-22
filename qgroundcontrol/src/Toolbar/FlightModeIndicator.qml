@@ -12,7 +12,7 @@ Item {
 
     property bool   showIndicator:          true
     property bool   waitForParameters:      false
-    property color  ribbonTextColor:        qgcPal.text   // STRATUM: black on the fly-view ribbon
+    property color  ribbonTextColor:        qgcPal.text   // STRATUM: ribbon text token (§2, resolves to #F1F4F7 on dark)
 
     property real fontPointSize:    ScreenTools.largeFontPointSize
     property var  activeVehicle:    QGroundControl.multiVehicleManager.activeVehicle
