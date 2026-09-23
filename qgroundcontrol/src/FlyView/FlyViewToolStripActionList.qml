@@ -28,6 +28,7 @@ ToolStripActionList {
         GuidedActionStandoffMode { },       // Standoff flight mode (hold-to-confirm)
         GuidedActionLand { },               // Land flight mode
         GuidedActionHold { },               // Hold flight mode
+        FlyViewFlightModeAction { },        // STRATUM: flight-mode picker (moved off the ribbon per §3.1/§3.2)
         GuidedActionAbort { },              // PX4 custom "Abort" flight mode (sub=22)
         // STRATUM: PX4 custom "Engagement" flight mode (sub=21). Routed through the
         // engagement controller so the abort destination is armed (PARAM_SET) before commit.

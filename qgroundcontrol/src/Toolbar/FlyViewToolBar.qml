@@ -106,11 +106,33 @@ Item {
                             onClicked:          mainWindow.showToolSelectDialog()
                         }
 
-                        MainStatusIndicator {
-                            id:                 mainStatusIndicator
-                            objectName:         "toolbar_mainStatusIndicator"
-                            Layout.fillHeight:  true
-                            ribbonTextColor:    _ribbonTextColor
+                        // STRATUM (§3.1): button-style chip wrapper for the arm status.
+                        // Outer Item hosts the border rectangle (anchored, non-participating
+                        // in any Row/ColumnLayout) plus the indicator. Padding = -0.35em L/R,
+                        // 0.15em T/B, radius 0.3em per the design tokens.
+                        Item {
+                            id:                     mainStatusChip
+                            Layout.fillHeight:      true
+                            Layout.preferredWidth:  mainStatusIndicator.implicitWidth
+                                                    + ScreenTools.defaultFontPixelWidth * 0.7
+
+                            Rectangle {
+                                anchors.fill:           parent
+                                anchors.topMargin:      ScreenTools.defaultFontPixelHeight * 0.15
+                                anchors.bottomMargin:   ScreenTools.defaultFontPixelHeight * 0.15
+                                color:                  "transparent"
+                                border.color:           _ribbonTextColor
+                                border.width:           1
+                                radius:                 ScreenTools.defaultFontPixelHeight * 0.3
+                            }
+
+                            MainStatusIndicator {
+                                id:                 mainStatusIndicator
+                                objectName:         "toolbar_mainStatusIndicator"
+                                anchors.centerIn:   parent
+                                height:             parent.height
+                                ribbonTextColor:    _ribbonTextColor
+                            }
                         }
                     }
 
@@ -121,11 +143,32 @@ Item {
                         visible:    _activeVehicle && _communicationLost
                     }
 
-                    FlightModeIndicator {
-                        objectName:         "toolbar_flightModeIndicator"
-                        Layout.fillHeight:  true
-                        visible:            _activeVehicle
-                        ribbonTextColor:    _ribbonTextColor
+                    // STRATUM (§3.1): matching chip wrapper for the read-only flight-mode
+                    // display (mode picker moved to the left tool strip).
+                    Item {
+                        id:                     flightModeChip
+                        Layout.fillHeight:      true
+                        Layout.preferredWidth:  flightModeIndicator.implicitWidth
+                                                + ScreenTools.defaultFontPixelWidth * 0.7
+                        visible:                _activeVehicle
+
+                        Rectangle {
+                            anchors.fill:           parent
+                            anchors.topMargin:      ScreenTools.defaultFontPixelHeight * 0.15
+                            anchors.bottomMargin:   ScreenTools.defaultFontPixelHeight * 0.15
+                            color:                  "transparent"
+                            border.color:           _ribbonTextColor
+                            border.width:           1
+                            radius:                 ScreenTools.defaultFontPixelHeight * 0.3
+                        }
+
+                        FlightModeIndicator {
+                            id:                 flightModeIndicator
+                            objectName:         "toolbar_flightModeIndicator"
+                            anchors.centerIn:   parent
+                            height:             parent.height
+                            ribbonTextColor:    _ribbonTextColor
+                        }
                     }
                 }
             }
