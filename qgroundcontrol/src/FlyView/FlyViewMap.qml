@@ -73,6 +73,13 @@ FlightMap {
 
     signal standoffTargetPicked(var coordinate)
 
+    // STRATUM: raised when the operator picks "Set Standoff here" from the
+    // map-click drop panel. FlyView.qml routes this to
+    // FlyViewWidgetLayer.openStandoffAt(coord), which pre-fills the standoff
+    // panel's lat/lon fields and opens it (still allowing manual refinement
+    // or a crosshair map re-pick before commit).
+    signal standoffHereRequested(var coordinate)
+
     function startStandoffPick() { _standoffPickMode = true }
     function stopStandoffPick() {
         _standoffPickMode = false
@@ -1008,7 +1015,18 @@ FlightMap {
                     // location, ROI at location) are retired. The Standoff command now
                     // lives on the left tool strip ("Set Standoff" -> entry panel with
                     // manual lat/lon or crosshair map pick); this menu keeps only the
-                    // remaining point-anchored utilities.
+                    // remaining point-anchored utilities plus a fast-path "Set Standoff
+                    // here" that opens the entry panel with the clicked coordinate.
+                    QGCButton {
+                        Layout.fillWidth:   true
+                        text:               qsTr("Set Standoff here")
+                        visible:            _root._activeVehicle !== null
+                        onClicked: {
+                            mapClickDropPanel.close()
+                            _root.standoffHereRequested(mapClickCoord)
+                        }
+                    }
+
                     QGCButton {
                         Layout.fillWidth:   true
                         text:               qsTr("Set home here")
@@ -1064,7 +1082,8 @@ FlightMap {
         if (!globals.guidedControllerFlyView.guidedUIVisible &&
             (globals.guidedControllerFlyView.showGotoLocation || globals.guidedControllerFlyView.showOrbit ||
              globals.guidedControllerFlyView.showROI || globals.guidedControllerFlyView.showSetHome ||
-             globals.guidedControllerFlyView.showSetEstimatorOrigin)) {
+             globals.guidedControllerFlyView.showSetEstimatorOrigin ||
+             _root._activeVehicle !== null /* STRATUM: "Set Standoff here" is available whenever a vehicle is connected */)) {
 
             position = Qt.point(position.x, position.y)
             var clickCoord = _root.toCoordinate(position, false /* clipToViewPort */)
