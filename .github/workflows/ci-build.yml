@@ -7,10 +7,18 @@ name: CI Build (Windows / MSVC / Qt)
 # Release artifacts are handled separately by build-on-tag.yml (fires on v* tags).
 # This workflow is the fast feedback loop: push a branch -> get a build result.
 on:
-  # Auto-build on push and PRs is DISABLED (2026-09-18): Actions artifact storage
-  # was the bottleneck and builds are produced locally now (build-windows.ps1 /
-  # BUILD-Windows.md). Still runnable on demand from the Actions tab (Run workflow).
-  # Release installers continue to come from build-on-tag.yml on v* tags.
+  push:
+    branches:
+      - '**'
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'flyview-web/**'
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'flyview-web/**'
   workflow_dispatch:
     inputs:
       build_type:
