@@ -434,6 +434,242 @@ FlightMap {
         }
     }
 
+    // STRATUM: operator (GCS) situational awareness on the map.
+    // Records the operator's movement, draws a tactical marker at the operator's
+    // position, and shows a bearing/distance line from the operator to the active
+    // vehicle. Populated by QGCPositionManager (same source as the base FlightMap
+    // GCS icon), so nothing extra needs to be wired.
+    property var  _gcsPosition:               QGroundControl.qgcPositionManger.gcsPosition
+    property real _gcsHeading:                QGroundControl.qgcPositionManger.gcsHeading
+    property var  _gcsTrail:                  []
+    readonly property real _gcsTrailThresholdM: 2.0
+    readonly property int  _gcsTrailMax:        5000
+
+    // STRATUM: effective heading for the operator marker chevron. Most consumer
+    // NMEA receivers only emit a track-angle (RMC) while moving, so gcsHeading is
+    // NaN when the operator is stationary. Fall back to the last trail-segment
+    // azimuth so the chevron still points along the direction the operator is
+    // walking. When even that is unavailable (no trail yet), point at the active
+    // vehicle so the chevron still gives useful spatial context. If nothing is
+    // known, default to north (0).
+    property real _gcsEffectiveHeading: {
+        if (!isNaN(_gcsHeading)) return _gcsHeading
+        if (_gcsTrail.length >= 2) {
+            var a = _gcsTrail[_gcsTrail.length - 2]
+            var b = _gcsTrail[_gcsTrail.length - 1]
+            if (a && b && a.isValid && b.isValid && a.distanceTo(b) > 0.5) {
+                return a.azimuthTo(b)
+            }
+        }
+        if (_gcsPosition && _gcsPosition.isValid &&
+            _activeVehicleCoordinate && _activeVehicleCoordinate.isValid) {
+            return _gcsPosition.azimuthTo(_activeVehicleCoordinate)
+        }
+        return 0
+    }
+    property bool _gcsHeadingIsFallback: isNaN(_gcsHeading)
+
+    // STRATUM: seed the trail with the current position on load so the operator
+    // marker appears immediately when the NMEA source produced a fix before the
+    // map was created. Also logs the initial validity for field diagnostics.
+    Component.onCompleted: {
+        var p = QGroundControl.qgcPositionManger.gcsPosition
+        console.log("STRATUM FlyViewMap: initial gcsPosition valid=", p && p.isValid,
+                    "coord=", p ? p.latitude + "," + p.longitude : "null",
+                    "heading=", _gcsHeading)
+        if (p && p.isValid) {
+            _gcsPosition = p
+            _gcsTrail = [p]
+            gcsTrailPolyline.path = _gcsTrail
+        }
+    }
+
+    Connections {
+        target: QGroundControl.qgcPositionManger
+        function onGcsPositionChanged(gcsPosition) {
+            _root._gcsPosition = gcsPosition
+            if (!gcsPosition.isValid) {
+                return
+            }
+            var trail = _root._gcsTrail
+            if (trail.length > 0) {
+                var last = trail[trail.length - 1]
+                if (last.distanceTo(gcsPosition) < _root._gcsTrailThresholdM) {
+                    return
+                }
+            }
+            trail = trail.concat([gcsPosition])
+            if (trail.length > _root._gcsTrailMax) {
+                trail = trail.slice(trail.length - _root._gcsTrailMax)
+            }
+            _root._gcsTrail = trail
+            gcsTrailPolyline.path = trail
+        }
+    }
+
+    // Operator movement trail (accent cyan, dim).
+    MapPolyline {
+        id:         gcsTrailPolyline
+        line.width: 2
+        line.color: "#48D6FF"
+        opacity:    0.55
+        z:          QGroundControl.zOrderTrajectoryLines
+        visible:    _root._gcsTrail.length >= 2 && !pipMode
+    }
+
+    // Bearing line: operator -> active vehicle (amber, distinguishes it from the
+    // red trajectory and the green operator trail).
+    MapPolyline {
+        id:         gcsBearingLine
+        line.width: 2
+        line.color: "#F59E0B"
+        opacity:    0.85
+        z:          QGroundControl.zOrderTrajectoryLines
+        visible:    !pipMode && _root._gcsPosition && _root._gcsPosition.isValid &&
+                    _root._activeVehicleCoordinate && _root._activeVehicleCoordinate.isValid
+        path:       visible ? [_root._gcsPosition, _root._activeVehicleCoordinate] : []
+    }
+
+    // STRATUM operator marker: concentric accent-cyan rings + heading wedge + "OP"
+    // label. Layered above the base FlightMap GCS logo so it reads clearly in
+    // daylight. When QGCPositionManager provides a valid direction (gcsHeading is
+    // not NaN, i.e. the GPS source reports movement bearing) the wedge points along
+    // that heading, matching the vehicle icon's heading behaviour.
+    MapQuickItem {
+        id:             gcsMarker
+        coordinate:     _root._gcsPosition
+        visible:        _root._gcsPosition && _root._gcsPosition.isValid && !pipMode
+        anchorPoint.x:  sourceItem.width  / 2
+        anchorPoint.y:  sourceItem.height / 2
+        z:              QGroundControl.zOrderVehicles
+
+        sourceItem: Item {
+            width:  ScreenTools.defaultFontPixelHeight * 2.6
+            height: ScreenTools.defaultFontPixelHeight * 2.6
+
+            Rectangle {
+                anchors.centerIn: parent
+                width:            parent.width  * 0.85
+                height:           parent.height * 0.85
+                radius:           width / 2
+                color:            "#3348D6FF"
+                border.color:     "#48D6FF"
+                border.width:     2
+            }
+            Rectangle {
+                anchors.centerIn: parent
+                width:            parent.width  * 0.42
+                height:           parent.height * 0.42
+                radius:           width / 2
+                color:            "#48D6FF"
+                border.color:     "#001622"
+                border.width:     1
+            }
+
+            // Rotating heading chevron rendered on top of the rings. Rotation uses
+            // _gcsEffectiveHeading so it still points along the operator's motion
+            // when the receiver only emits position (no track angle). Fallback
+            // headings are dimmed so a stale/inferred direction reads differently
+            // from a live GPS heading.
+            Item {
+                id:                 gcsHeadingWedge
+                anchors.fill:       parent
+                rotation:           _root._gcsEffectiveHeading
+                opacity:            _root._gcsHeadingIsFallback ? 0.55 : 1.0
+                Behavior on rotation { RotationAnimation { duration: 150; direction: RotationAnimation.Shortest } }
+
+                Canvas {
+                    id:             gcsHeadingCanvas
+                    anchors.fill:   parent
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        ctx.reset()
+                        var cx    = width / 2
+                        var tip   = -height * 0.08
+                        var baseY = height * 0.32
+                        var half  = width * 0.18
+                        ctx.beginPath()
+                        ctx.moveTo(cx,        tip)
+                        ctx.lineTo(cx - half, baseY)
+                        ctx.lineTo(cx + half, baseY)
+                        ctx.closePath()
+                        ctx.fillStyle   = "#48D6FF"
+                        ctx.strokeStyle = "#001622"
+                        ctx.lineWidth   = 1.5
+                        ctx.fill()
+                        ctx.stroke()
+                    }
+                    onWidthChanged:  requestPaint()
+                    onHeightChanged: requestPaint()
+                }
+            }
+
+            QGCLabel {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top:              parent.bottom
+                anchors.topMargin:        1
+                text:                     qsTr("OP")
+                font.pointSize:           ScreenTools.smallFontPointSize
+                font.bold:                true
+                color:                    "#48D6FF"
+                style:                    Text.Outline
+                styleColor:               "#000000"
+            }
+        }
+    }
+
+    // Bearing / distance chip anchored at midpoint of the operator->vehicle line.
+    MapQuickItem {
+        id:             gcsBearingChip
+        visible:        gcsBearingLine.visible
+        coordinate:     visible ? QtPositioning.coordinate(
+                                    (_root._gcsPosition.latitude  + _root._activeVehicleCoordinate.latitude)  / 2,
+                                    (_root._gcsPosition.longitude + _root._activeVehicleCoordinate.longitude) / 2)
+                                : QtPositioning.coordinate()
+        anchorPoint.x:  sourceItem.width  / 2
+        anchorPoint.y:  sourceItem.height / 2
+        z:              QGroundControl.zOrderVehicles
+
+        sourceItem: Rectangle {
+            color:          "#CC101418"
+            border.color:   "#F59E0B"
+            border.width:   1
+            radius:         3
+            implicitWidth:  chipRow.implicitWidth  + ScreenTools.defaultFontPixelWidth
+            implicitHeight: chipRow.implicitHeight + (ScreenTools.defaultFontPixelHeight * 0.25)
+
+            Row {
+                id:                 chipRow
+                anchors.centerIn:   parent
+                spacing:            ScreenTools.defaultFontPixelWidth * 0.5
+
+                QGCLabel {
+                    text: {
+                        if (!gcsBearingLine.visible) return ""
+                        var az = _root._gcsPosition.azimuthTo(_root._activeVehicleCoordinate)
+                        if (az < 0) az += 360
+                        var s = Math.round(az).toString()
+                        while (s.length < 3) s = "0" + s
+                        return s + "\u00B0"
+                    }
+                    color:          "#F59E0B"
+                    font.bold:      true
+                    font.pointSize: ScreenTools.smallFontPointSize
+                }
+                QGCLabel {
+                    text: {
+                        if (!gcsBearingLine.visible) return ""
+                        var d = _root._gcsPosition.distanceTo(_root._activeVehicleCoordinate)
+                        if (d >= 1000) return (d / 1000).toFixed(2) + " km"
+                        return Math.round(d) + " m"
+                    }
+                    color:          "#F1F4F7"
+                    font.pointSize: ScreenTools.smallFontPointSize
+                }
+            }
+        }
+    }
+
     // Add the vehicles to the map
     MapItemView {
         model: QGroundControl.multiVehicleManager.vehicles

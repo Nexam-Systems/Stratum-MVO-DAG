@@ -8,7 +8,10 @@ import QGroundControl.FactControls
 
 Item {
     id:                     control
-    Layout.preferredWidth:  mainLayout.width
+    Layout.preferredWidth:  mainLayout.width + ScreenTools.defaultFontPixelWidth
+    Layout.preferredHeight: mainLayout.height
+    height:                 parent ? parent.height : mainLayout.height
+    width:                  mainLayout.width + ScreenTools.defaultFontPixelWidth
 
     property bool   showIndicator:          true
     property bool   waitForParameters:      false
@@ -68,6 +71,7 @@ Item {
             text:                   _vtolInFWDFlight ? qsTr("FW\nVTOL") : qsTr("MR\nVTOL")
             font.pointSize:         ScreenTools.smallFontPointSize
             wrapMode:               Text.WordWrap
+            color:                  ribbonTextColor
             visible:                _isVTOL
         }
 

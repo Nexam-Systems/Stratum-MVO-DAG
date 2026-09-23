@@ -6,7 +6,7 @@ import QGroundControl.Controls
 
 RowLayout {
     id:         control
-    spacing:    ScreenTools.defaultFontPixelWidth
+    spacing:    ScreenTools.defaultFontPixelWidth * 0.25
 
     property var    _activeVehicle:     QGroundControl.multiVehicleManager.activeVehicle
     property bool   _armed:             _activeVehicle ? _activeVehicle.armed : false
@@ -20,12 +20,52 @@ RowLayout {
     property var    _vehicleInAir:      _activeVehicle ? _activeVehicle.flying || _activeVehicle.landing : false
     property bool   _vtolInFWDFlight:   _activeVehicle ? _activeVehicle.vtolInFwdFlight : false
 
+    // STRATUM: hover + press affordance so the status readout reads as a real button.
+    property bool   _hovered:           statusHoverArea.containsMouse
+
     function dropMainStatusIndicator() {
         let overallStatusComponent = _activeVehicle ? overallStatusIndicatorPage : overallStatusOfflineIndicatorPage
         mainWindow.showIndicatorDrawer(overallStatusComponent, control)
     }
 
     QGCPalette { id: qgcPal }
+
+    // STRATUM: light hover chip that hugs the status word + chevron. Rounded so it
+    // reads as a discrete button on the neutral tactical ribbon. The chip is scoped
+    // to just the label + chevron so an adjacent VTOL mode label (when present)
+    // keeps its own interactive region.
+    Rectangle {
+        anchors.left:           mainStatusLabel.left
+        anchors.right:          mainStatusChevron.right
+        anchors.top:            parent.top
+        anchors.bottom:         parent.bottom
+        anchors.topMargin:      ScreenTools.defaultFontPixelHeight * 0.15
+        anchors.bottomMargin:   ScreenTools.defaultFontPixelHeight * 0.15
+        anchors.leftMargin:     -ScreenTools.defaultFontPixelWidth * 0.35
+        anchors.rightMargin:    -ScreenTools.defaultFontPixelWidth * 0.35
+        radius:                 ScreenTools.defaultFontPixelHeight * 0.3
+        color:                  Qt.rgba(1, 1, 1, _hovered ? 0.12 : 0.06)
+        border.color:           Qt.rgba(1, 1, 1, _hovered ? 0.35 : 0.18)
+        border.width:           1
+        z:                      -1
+        Behavior on color { ColorAnimation { duration: 120 } }
+        Behavior on border.color { ColorAnimation { duration: 120 } }
+    }
+
+    MouseArea {
+        id:                 statusHoverArea
+        anchors.left:       mainStatusLabel.left
+        anchors.right:      mainStatusChevron.right
+        anchors.top:        parent.top
+        anchors.bottom:     parent.bottom
+        anchors.leftMargin: -ScreenTools.defaultFontPixelWidth * 0.35
+        anchors.rightMargin:-ScreenTools.defaultFontPixelWidth * 0.35
+        hoverEnabled:       !ScreenTools.isMobile
+        cursorShape:        Qt.PointingHandCursor
+        acceptedButtons:    Qt.LeftButton
+        onClicked:          dropMainStatusIndicator()
+        z:                  10
+    }
 
     QGCLabel {
         id:                 mainStatusLabel
@@ -44,13 +84,26 @@ RowLayout {
         property string _engagingText:      qsTr("Engaging")
         property string _abortText:         qsTr("Abort")
 
-        // STRATUM: ribbon status reflects operational mode.
+        // STRATUM: ribbon status reflects the live operational state. It is derived from
+        // the dynamic armed / flying / landing telemetry -- a disarmed or landed vehicle
+        // can never read "Flying". A disarmed vehicle only reads "Ready" when the
+        // firmware's pre-arm check + sensor health both pass; otherwise "Not Ready".
         text: {
             if (!_activeVehicle) {
                 return _disconnectedText
             }
             if (_communicationLost) {
                 return _commLostText
+            }
+            // Disarmed on the ground: never "Flying" regardless of the last flight mode.
+            if (!_armed) {
+                if (_activeVehicle.readyToFlyAvailable && !_activeVehicle.readyToFly) {
+                    return _notReadyToFlyText
+                }
+                if (!_activeVehicle.allSensorsHealthy) {
+                    return _notReadyToFlyText
+                }
+                return _readyToFlyText
             }
             var mode = _activeVehicle.flightMode
             if (mode === qsTr("Abort")) {
@@ -59,14 +112,14 @@ RowLayout {
             if (mode === qsTr("Engagement") || mode === qsTr("Vision Engagement")) {
                 return _engagingText
             }
-            if (mode === qsTr("Standoff") || mode === qsTr("Takeoff") ||
-                    mode === _activeVehicle.pauseFlightMode || _activeVehicle.flying) {
-                if (_activeVehicle.landing) {
-                    return _landingText
-                }
+            if (_activeVehicle.landing) {
+                return _landingText
+            }
+            if (_activeVehicle.flying) {
                 return _flyingText
             }
-            return _readyToFlyText
+            // Armed but still on the ground (e.g. pre-takeoff).
+            return _armedText
         }
         color:              ribbonTextColor
 
@@ -94,11 +147,17 @@ RowLayout {
                 return iconColor
             }
         }
+    }
 
-        QGCMouseArea {
-            anchors.fill:   parent
-            onClicked:      dropMainStatusIndicator()
-        }
+    // STRATUM: dropdown chevron so the status label reads as a menu trigger, not a
+    // passive status word. Rendered in the same ribbon text colour.
+    QGCLabel {
+        id:                 mainStatusChevron
+        Layout.alignment:   Qt.AlignVCenter
+        text:               "\u25BE"
+        color:              ribbonTextColor
+        font.pointSize:     ScreenTools.smallFontPointSize
+        opacity:            0.85
     }
 
     QGCLabel {
