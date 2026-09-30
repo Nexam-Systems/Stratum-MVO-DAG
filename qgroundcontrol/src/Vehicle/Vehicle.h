@@ -272,6 +272,19 @@ public:
     Q_PROPERTY(int      firmwareCustomMajorVersion  READ firmwareCustomMajorVersion NOTIFY firmwareCustomVersionChanged)
     Q_PROPERTY(int      firmwareCustomMinorVersion  READ firmwareCustomMinorVersion NOTIFY firmwareCustomVersionChanged)
     Q_PROPERTY(int      firmwareCustomPatchVersion  READ firmwareCustomPatchVersion NOTIFY firmwareCustomVersionChanged)
+
+    // STRATUM: NX firmware contract (NXM-SW-GOV-001). Decoded from AUTOPILOT_VERSION
+    // flight_custom_version bytes [3..7]: 'N','X', schema_major, schema_minor, capability_flags.
+    Q_PROPERTY(bool     nxIsStratumFirmware     READ nxIsStratumFirmware    NOTIFY nxCapabilitiesChanged)
+    Q_PROPERTY(bool     nxIsDevelopmentBuild    READ nxIsDevelopmentBuild   NOTIFY nxCapabilitiesChanged)
+    Q_PROPERTY(QString  nxVersionString         READ nxVersionString        NOTIFY nxCapabilitiesChanged)
+    Q_PROPERTY(int      nxSchemaMajor           READ nxSchemaMajor          NOTIFY nxCapabilitiesChanged)
+    Q_PROPERTY(int      nxSchemaMinor           READ nxSchemaMinor          NOTIFY nxCapabilitiesChanged)
+    Q_PROPERTY(int      nxCapabilityFlags       READ nxCapabilityFlags      NOTIFY nxCapabilitiesChanged)
+    Q_PROPERTY(bool     nxHasStandoff           READ nxHasStandoff          NOTIFY nxCapabilitiesChanged)
+    Q_PROPERTY(bool     nxHasAbortRecovery      READ nxHasAbortRecovery     NOTIFY nxCapabilitiesChanged)
+    Q_PROPERTY(bool     nxHasVisionEngagement   READ nxHasVisionEngagement  NOTIFY nxCapabilitiesChanged)
+
     Q_PROPERTY(QString  gitHash                     READ gitHash                    NOTIFY gitHashChanged)
     Q_PROPERTY(quint64  vehicleUID                  READ vehicleUID                 NOTIFY vehicleUIDChanged)
     Q_PROPERTY(QString  vehicleUIDStr               READ vehicleUIDStr              NOTIFY vehicleUIDChanged)
@@ -701,6 +714,31 @@ public:
     void setFirmwareCustomVersion(int majorVersion, int minorVersion, int patchVersion);
     // versionNotSetValue inherited from VehicleTypes
 
+    // STRATUM NXM-SW-GOV-001: capability flag bits packed into flight_custom_version[7].
+    static constexpr int NxCapStandoff         = 0x01;
+    static constexpr int NxCapAbortRecovery    = 0x02;
+    static constexpr int NxCapVisionEngagement = 0x04;
+
+    bool    nxIsStratumFirmware()   const { return _nxVersionReceived && _nxMarkerValid; }
+    bool    nxIsDevelopmentBuild()  const { return nxIsStratumFirmware()
+                                                    && _firmwareCustomMajorVersion == 0
+                                                    && _firmwareCustomMinorVersion == 0
+                                                    && _firmwareCustomPatchVersion == 0; }
+    QString nxVersionString()       const;
+    int     nxSchemaMajor()         const { return _nxSchemaMajor; }
+    int     nxSchemaMinor()         const { return _nxSchemaMinor; }
+    int     nxCapabilityFlags()     const { return _nxCapabilityFlags; }
+    bool    nxHasStandoff()         const { return nxIsStratumFirmware() && (_nxCapabilityFlags & NxCapStandoff)         != 0; }
+    bool    nxHasAbortRecovery()    const { return nxIsStratumFirmware() && (_nxCapabilityFlags & NxCapAbortRecovery)    != 0; }
+    bool    nxHasVisionEngagement() const { return nxIsStratumFirmware() && (_nxCapabilityFlags & NxCapVisionEngagement) != 0; }
+
+    void setNxCapabilities(int schemaMajor, int schemaMinor, int capabilityFlags, bool markerValid);
+
+    /// STRATUM NXM-SW-GOV-001 gate. Returns true when the connected firmware satisfies
+    /// the minimum contract for a custom command; false (with an app-message + log) when
+    /// it does not. Callers should short-circuit their command dispatch on false.
+    Q_INVOKABLE bool supportsStratumCommand(int minSchemaMajor, int minNxMajor, int capMask, const QString& commandName) const;
+
     QString gitHash() const { return _gitHash; }
     quint64 vehicleUID() const { return _uid; }
     QString vehicleUIDStr();
@@ -820,6 +858,7 @@ signals:
 
     void firmwareVersionChanged         ();
     void firmwareCustomVersionChanged   ();
+    void nxCapabilitiesChanged          ();
     void gitHashChanged                 (QString hash);
     void vehicleUIDChanged              ();
     void loadProgressChanged            (float value);
@@ -1053,6 +1092,13 @@ private:
     int _firmwareCustomMinorVersion = versionNotSetValue;
     int _firmwareCustomPatchVersion = versionNotSetValue;
     FIRMWARE_VERSION_TYPE _firmwareVersionType = FIRMWARE_VERSION_TYPE_OFFICIAL;
+
+    // STRATUM NXM-SW-GOV-001: state populated from AUTOPILOT_VERSION.flight_custom_version[3..7].
+    bool    _nxVersionReceived  = false;
+    bool    _nxMarkerValid      = false;
+    uint8_t _nxSchemaMajor      = 0;
+    uint8_t _nxSchemaMinor      = 0;
+    uint8_t _nxCapabilityFlags  = 0;
 
     // Vendor and Product as reported from the first autopilot version message
     // during the initial connect. They may be zero eg ArduPilot SITL reports 0
