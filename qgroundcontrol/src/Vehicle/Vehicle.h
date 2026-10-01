@@ -739,6 +739,13 @@ public:
     /// it does not. Callers should short-circuit their command dispatch on false.
     Q_INVOKABLE bool supportsStratumCommand(int minSchemaMajor, int minNxMajor, int capMask, const QString& commandName) const;
 
+    /// Checks the vehicle's PX4 base firmware version against the admin-configured
+    /// floor (SettingsManager::adminSettings). Emits a status-text warning + app
+    /// message when the firmware is below floor and strictCompatibilityGate is on.
+    /// Called at connect time (after AUTOPILOT_VERSION) and from supportsStratumCommand.
+    /// Returns true when the firmware meets the floor.
+    bool checkPx4VersionAgainstAdminFloor(const QString& context = QString()) const;
+
     QString gitHash() const { return _gitHash; }
     quint64 vehicleUID() const { return _uid; }
     QString vehicleUIDStr();

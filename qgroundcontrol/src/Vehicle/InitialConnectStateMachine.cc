@@ -340,6 +340,11 @@ void InitialConnectStateMachine::_handleAutopilotVersionSuccess(const mavlink_me
         patchVersion = (autopilotVersion.flight_sw_version >> (8*1)) & 0xFF;
         versionType = (FIRMWARE_VERSION_TYPE)((autopilotVersion.flight_sw_version >> (8*0)) & 0xFF);
         vehicle()->setFirmwareVersion(majorVersion, minorVersion, patchVersion, versionType);
+
+        // STRATUM: enforce admin-configured PX4 version floor at connect time so the
+        // operator sees the mismatch warning the moment the vehicle reports its version,
+        // not only when they issue a STRATUM command.
+        vehicle()->checkPx4VersionAgainstAdminFloor(tr("Vehicle connect"));
     }
 
     if (vehicle()->px4Firmware()) {
