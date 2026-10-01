@@ -14,5 +14,6 @@ GuidedToolStripAction {
     visible:    true
     enabled:    !!_vehicle
     actionID:   _guidedController.actionSetFlightMode
-    actionData: qsTr("Abort")
+    // STRATUM: wire-protocol mode-name token, do not localize (see GuidedActionLand).
+    actionData: "Abort"
 }

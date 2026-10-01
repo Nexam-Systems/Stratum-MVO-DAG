@@ -13,5 +13,6 @@ GuidedToolStripAction {
     visible:    true
     enabled:    !!_vehicle
     actionID:   _guidedController.actionSetFlightMode
-    actionData: qsTr("Safe Recovery")
+    // STRATUM: wire-protocol mode-name token, do not localize (see GuidedActionLand).
+    actionData: "Safe Recovery"
 }
