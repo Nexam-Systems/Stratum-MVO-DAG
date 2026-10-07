@@ -9,8 +9,7 @@
 namespace {
 // Required failsafe posture (architecture D8). Values ratified in flight test —
 // change them HERE, never the mechanism.
-constexpr int kStdfSeqA        = 1;   // approach_with_height = false
-constexpr int kStdfSeqB        = 3;   // approach_with_height = false
+constexpr int kStdfSeqRequiredValue = 5;
 constexpr int kNavRclActHold   = 1;   // PX4 AUTO_LOITER / Hold
 constexpr int kComRclExceptBit = 2;   // COM_RCL_EXCEPT bit 1 (value & 2) exempts RC-loss RTL
 
@@ -46,16 +45,18 @@ FailsafeResult FailsafeVerifier::verify(const QVector<Vehicle*> &fleet) const
         }
         const int vid = v->id();
 
-        // --- STDF_SEQ in {1,3} — deconfliction-critical (D8/R4) ---
+        // --- STDF_SEQ equals 5 — deconfliction-critical (D8/R4) ---
         if (Fact *f = readParam(v, QStringLiteral("STDF_SEQ"))) {
-            const int seq = f->rawValue().toInt();
-            if (seq != kStdfSeqA && seq != kStdfSeqB) {
+            bool valueOk = false;
+            const int seqValue = f->rawValue().toInt(&valueOk);
+            if (!valueOk || seqValue != kStdfSeqRequiredValue) {
                 result.findings.append({ vid, QStringLiteral("STDF_SEQ"),
-                                         QStringLiteral("1 or 3"),
-                                         QString::number(seq), true });
+                                         QStringLiteral("exactly 5"),
+                                         f->rawValue().toString(),
+                                         true });
             }
         } else {
-            result.findings.append(missing(vid, QStringLiteral("STDF_SEQ"), QStringLiteral("1 or 3")));
+            result.findings.append(missing(vid, QStringLiteral("STDF_SEQ"), QStringLiteral("exactly 5")));
         }
 
         // --- NAV_DLL_ACT != 0 — datalink loss must trigger something (D8/R2) ---
