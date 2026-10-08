@@ -721,7 +721,34 @@ Item {
             _activeVehicle.setEstimatorOrigin(actionData)
             break
         case actionSetFlightMode:
-            _activeVehicle.flightMode = actionData
+            // STRATUM: resolve the requested mode name against the vehicle's advertised
+            // list case-insensitively, then command the exact advertised string. Fixes
+            // the direct Land/Hold/Safe-Recovery/Abort/Standoff buttons silently no-oping
+            // when actionData casing (or a stray qsTr translation) didn't match
+            // PX4FirmwarePlugin::setFlightMode's compare. Re-fetches the live vehicle so
+            // a stale binding can't swallow the write.
+            {
+                var _modeVehicle = QGroundControl.multiVehicleManager.activeVehicle
+                if (!_modeVehicle) {
+                    console.warn("actionSetFlightMode: no active vehicle, dropping", actionData)
+                    break
+                }
+                var _requested = String(actionData)
+                var _advertised = _modeVehicle.flightModes
+                var _resolved = _requested
+                var _matched = false
+                for (var _i = 0; _i < _advertised.length; _i++) {
+                    if (_advertised[_i].localeCompare(_requested, undefined, { sensitivity: "accent" }) === 0) {
+                        _resolved = _advertised[_i]
+                        _matched = true
+                        break
+                    }
+                }
+                if (!_matched) {
+                    console.warn("actionSetFlightMode: requested mode not in advertised list; sending anyway. requested=", _requested, "advertised=", _advertised)
+                }
+                _modeVehicle.flightMode = _resolved
+            }
             break
         case actionChangeHeading:
             _activeVehicle.guidedModeChangeHeading(actionData)

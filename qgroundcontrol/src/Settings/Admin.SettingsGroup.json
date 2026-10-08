@@ -1,0 +1,72 @@
+{
+    "version": 1,
+    "fileType": "FactMetaData",
+    "QGC.MetaData.Facts": [
+        {
+            "name": "requiredPx4MajorVersion",
+            "shortDesc": "Required PX4 firmware major version",
+            "longDesc": "Vehicles reporting a PX4 firmware major version below this value are rejected by the STRATUM compatibility gate.",
+            "type": "uint32",
+            "default": 1,
+            "min": 0,
+            "max": 255,
+            "label": "Required PX4 major version"
+        },
+        {
+            "name": "requiredPx4MinorVersion",
+            "shortDesc": "Required PX4 firmware minor version",
+            "longDesc": "Minor-version floor applied when the vehicle's PX4 major matches the required major.",
+            "type": "uint32",
+            "default": 14,
+            "min": 0,
+            "max": 255,
+            "label": "Required PX4 minor version"
+        },
+        {
+            "name": "requiredPx4PatchVersion",
+            "shortDesc": "Required PX4 firmware patch version",
+            "longDesc": "Patch-version floor applied when the vehicle's PX4 major and minor match the required values.",
+            "type": "uint32",
+            "default": 0,
+            "min": 0,
+            "max": 255,
+            "label": "Required PX4 patch version"
+        },
+        {
+            "name": "requiredStratumSchemaMajor",
+            "shortDesc": "Required STRATUM NX schema major version",
+            "longDesc": "Compatibility-gate floor for the STRATUM NX schema major reported by the vehicle. The gate requires an exact match.",
+            "type": "uint32",
+            "default": 1,
+            "min": 0,
+            "max": 255,
+            "label": "Required STRATUM schema major"
+        },
+        {
+            "name": "requiredStratumNxMajor",
+            "shortDesc": "Required STRATUM NX firmware major version",
+            "longDesc": "Compatibility-gate floor for the STRATUM NX firmware major reported by the vehicle.",
+            "type": "uint32",
+            "default": 1,
+            "min": 0,
+            "max": 255,
+            "label": "Required STRATUM NX major"
+        },
+        {
+            "name": "strictCompatibilityGate",
+            "shortDesc": "Enforce STRATUM compatibility gate",
+            "longDesc": "When enabled, commands are rejected if the vehicle firmware does not meet the required versions. When disabled, mismatches are logged as warnings but commands are allowed through.",
+            "type": "bool",
+            "default": true,
+            "label": "Enforce compatibility gate"
+        },
+        {
+            "name": "passwordHashOverride",
+            "shortDesc": "Runtime admin password hash override",
+            "longDesc": "SHA-256 hex of the admin password set at runtime from the admin dialog. Empty means use the compile-time hash. Do not edit by hand.",
+            "type": "string",
+            "default": "",
+            "label": "Password hash override"
+        }
+    ]
+}

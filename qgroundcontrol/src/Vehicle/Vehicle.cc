@@ -62,6 +62,7 @@
 #include "RemoteIDManager.h"
 #include "RequestMessageCoordinator.h"
 #include "SettingsManager.h"
+#include "AdminSettings.h"
 #include "AppSettings.h"
 #include "FlyViewSettings.h"
 #include "StandardModes.h"
@@ -88,6 +89,7 @@
 #endif
 
 #include <QtCore/QDateTime>
+#include <tuple>
 
 QGC_LOGGING_CATEGORY(VehicleLog, "Vehicle.Vehicle")
 
@@ -1926,6 +1928,12 @@ bool Vehicle::guidedModeGotoLocation(const QGeoCoordinate& gotoCoord, double for
 
 bool Vehicle::guidedModeStandoff(const QGeoCoordinate& targetCoord, double distanceMeters, double bearingDegrees, double relativeHeight)
 {
+    // STRATUM NXM-SW-GOV-001: DO_STANDOFF requires schema_major=1, NX_major>=1,
+    // and capability bit 0x01 (NxCapStandoff). Non-conforming firmware is rejected
+    // here so we never emit the custom command against a stock or dev PX4 build.
+    if (!supportsStratumCommand(1, 1, NxCapStandoff, tr("Set Standoff"))) {
+        return false;
+    }
     if (!_vehicleSupports->guidedMode()) {
         QGC::showAppMessage(guided_mode_not_supported_by_vehicle);
         return false;
@@ -2318,6 +2326,156 @@ void Vehicle::setFirmwareCustomVersion(int majorVersion, int minorVersion, int p
     _firmwareCustomMinorVersion = minorVersion;
     _firmwareCustomPatchVersion = patchVersion;
     emit firmwareCustomVersionChanged();
+}
+
+void Vehicle::setNxCapabilities(int schemaMajor, int schemaMinor, int capabilityFlags, bool markerValid)
+{
+    _nxVersionReceived  = true;
+    _nxMarkerValid      = markerValid;
+    _nxSchemaMajor      = static_cast<uint8_t>(schemaMajor & 0xFF);
+    _nxSchemaMinor      = static_cast<uint8_t>(schemaMinor & 0xFF);
+    _nxCapabilityFlags  = static_cast<uint8_t>(capabilityFlags & 0xFF);
+    emit nxCapabilitiesChanged();
+}
+
+QString Vehicle::nxVersionString() const
+{
+    if (!_nxVersionReceived || !_nxMarkerValid) {
+        return QString();
+    }
+    return QStringLiteral("NX-v%1.%2.%3")
+        .arg(_firmwareCustomMajorVersion)
+        .arg(_firmwareCustomMinorVersion)
+        .arg(_firmwareCustomPatchVersion);
+}
+
+bool Vehicle::supportsStratumCommand(int minSchemaMajor, int minNxMajor, int capMask, const QString& commandName) const
+{
+    // STRATUM NXM-SW-GOV-001 compatibility gate. Rejects with an operator-visible message
+    // and a warning log line whenever the connected firmware does not meet the contract.
+    //
+    // Admin overrides: SettingsManager::adminSettings() carries engineering-controlled
+    // floors (hidden behind the toolbar wordmark gesture + password). Those floors can
+    // only tighten the caller-supplied minimums, never relax them. If strictCompatibilityGate
+    // is disabled, mismatches are logged but the command is still allowed through.
+    AdminSettings* admin = SettingsManager::instance()->adminSettings();
+    if (admin) {
+        const int adminSchema = admin->requiredStratumSchemaMajor()->rawValue().toInt();
+        const int adminNx     = admin->requiredStratumNxMajor()->rawValue().toInt();
+        minSchemaMajor = qMax(minSchemaMajor, adminSchema);
+        minNxMajor     = qMax(minNxMajor, adminNx);
+    }
+    const bool strict = admin ? admin->strictCompatibilityGate()->rawValue().toBool() : true;
+
+    const auto reject = [&](const QString& reason) {
+        qCWarning(VehicleLog).noquote()
+            << "STRATUM command rejected:" << commandName << "-" << reason
+            << "| nxReceived="   << _nxVersionReceived
+            << "markerValid="    << _nxMarkerValid
+            << "schema="         << _nxSchemaMajor << "." << _nxSchemaMinor
+            << "nx="             << _firmwareCustomMajorVersion << "."
+                                 << _firmwareCustomMinorVersion << "."
+                                 << _firmwareCustomPatchVersion
+            << "caps=0x"         << QString::number(_nxCapabilityFlags, 16)
+            << "gitHash="        << _gitHash;
+
+        if (!strict) {
+            return; // non-strict mode: log only, no operator-visible message
+        }
+
+        // Surface the rejection in the vehicle-messages drawer that opens below the ARM
+        // button (MainStatusIndicator -> "Vehicle Messages" -> VehicleMessageList). We
+        // reuse the same status-text pipe that a firmware-emitted STATUSTEXT would take,
+        // so the message renders identically (timestamp + severity tag) and bumps the
+        // ribbon message-count icon. Also fired via showAppMessage() for parity with the
+        // rest of the guided-command rejections.
+        const QString displayText = tr("%1 rejected: %2").arg(commandName, reason);
+        if (m_statusTextHandler) {
+            m_statusTextHandler->handleHTMLEscapedTextMessage(
+                        MAV_COMP_ID_MISSIONPLANNER,
+                        MAV_SEVERITY_WARNING,
+                        displayText.toHtmlEscaped(),
+                        QString());
+        }
+        QGC::showAppMessage(displayText);
+    };
+
+    if (!_nxVersionReceived) {
+        reject(tr("AUTOPILOT_VERSION not received from vehicle"));
+        return strict ? false : true;
+    }
+    if (!_nxMarkerValid) {
+        reject(tr("firmware is not STRATUM/NX (missing NX marker)"));
+        return strict ? false : true;
+    }
+    if (_nxSchemaMajor != minSchemaMajor) {
+        reject(tr("unsupported STRATUM schema major %1 (requires %2)").arg(_nxSchemaMajor).arg(minSchemaMajor));
+        return strict ? false : true;
+    }
+    if (_firmwareCustomMajorVersion < minNxMajor) {
+        reject(tr("NX firmware major %1 is older than the required %2").arg(_firmwareCustomMajorVersion).arg(minNxMajor));
+        return strict ? false : true;
+    }
+    if ((_nxCapabilityFlags & capMask) != capMask) {
+        reject(tr("firmware does not advertise capability 0x%1 (flags=0x%2)")
+                .arg(capMask, 0, 16).arg(_nxCapabilityFlags, 0, 16));
+        return strict ? false : true;
+    }
+    if (!checkPx4VersionAgainstAdminFloor(commandName)) {
+        return strict ? false : true;
+    }
+    return true;
+}
+
+bool Vehicle::checkPx4VersionAgainstAdminFloor(const QString& context) const
+{
+    AdminSettings* admin = SettingsManager::instance()->adminSettings();
+    if (!admin) {
+        return true;
+    }
+    const int reqMaj = admin->requiredPx4MajorVersion()->rawValue().toInt();
+    const int reqMin = admin->requiredPx4MinorVersion()->rawValue().toInt();
+    const int reqPat = admin->requiredPx4PatchVersion()->rawValue().toInt();
+    const bool strict = admin->strictCompatibilityGate()->rawValue().toBool();
+
+    // Floor of 0.0.0 means "no requirement" -- skip entirely.
+    if (reqMaj == 0 && reqMin == 0 && reqPat == 0) {
+        return true;
+    }
+    // Version not yet reported by vehicle (AUTOPILOT_VERSION pending). Don't warn --
+    // the connect-time call site will re-check once it arrives.
+    if (_firmwareMajorVersion < 0) {
+        return true;
+    }
+
+    const auto cmp = std::tuple(_firmwareMajorVersion, _firmwareMinorVersion, _firmwarePatchVersion);
+    const auto req = std::tuple(reqMaj, reqMin, reqPat);
+    if (cmp >= req) {
+        return true;
+    }
+
+    const QString reason = tr("PX4 firmware %1.%2.%3 is older than the required %4.%5.%6")
+        .arg(_firmwareMajorVersion).arg(_firmwareMinorVersion).arg(_firmwarePatchVersion)
+        .arg(reqMaj).arg(reqMin).arg(reqPat);
+
+    qCWarning(VehicleLog).noquote() << "STRATUM PX4 version floor:" << reason
+                                    << (context.isEmpty() ? QString() : QStringLiteral("| context=") + context);
+
+    if (!strict) {
+        return false; // caller treats as pass-through, but we still return false so counters/log see it
+    }
+
+    const QString heading = context.isEmpty() ? tr("Vehicle firmware mismatch") : context;
+    const QString displayText = tr("%1: %2").arg(heading, reason);
+    if (m_statusTextHandler) {
+        m_statusTextHandler->handleHTMLEscapedTextMessage(
+                    MAV_COMP_ID_MISSIONPLANNER,
+                    MAV_SEVERITY_WARNING,
+                    displayText.toHtmlEscaped(),
+                    QString());
+    }
+    QGC::showAppMessage(displayText);
+    return false;
 }
 
 QString Vehicle::firmwareVersionTypeString() const

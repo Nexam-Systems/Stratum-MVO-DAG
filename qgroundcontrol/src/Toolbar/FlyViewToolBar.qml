@@ -25,37 +25,22 @@ Item {
     property real   _leftRightMargin:   ScreenTools.defaultFontPixelWidth * 0.75
     property var    _guidedController:  globals.guidedControllerFlyView
 
-    // STRATUM: solid ribbon colour reflects operational state. Kept in lock-step with
-    // FlyViewToolStrip.qml and FlightMap/MapItems/VehicleMapItem.qml.
-    readonly property string _abortModeName:      qsTr("Abort")
+    // STRATUM: the fly-view ribbon stays a single neutral chrome band so operators are
+    // not conditioned to a rotating rainbow of state colours. Only the Engagement flight
+    // mode -- the safety-critical live-fire state -- turns the ribbon solid red. Every
+    // other state (Standoff, Takeoff, Hold, Manual, Abort, disconnected, ...) keeps the
+    // same dark graphite background; individual telemetry chips (RSSI, comms, battery)
+    // still colour themselves for warning/critical thresholds.
     readonly property string _engagementModeName: qsTr("Engagement")
-    // All three engagement modes take the red ribbon: it encodes "committed to a terminal
-    // run", not which guidance law is running. Vision Engagement was previously absent
-    // from this test and showed the green operations ribbon; it is added with PN.
-    readonly property string _visionEngagementModeName: qsTr("Vision Engagement")
-    readonly property string _pnEngagementModeName:     qsTr("PN Engagement")
-    readonly property string _holdModeName:       _activeVehicle ? _activeVehicle.pauseFlightMode : qsTr("Hold")
     property color _ribbonColor: {
-        if (!_activeVehicle) {
-            return "#6B7280"                    // disconnected / no vehicle
+        if (_activeVehicle && _activeVehicle.flightMode === _engagementModeName) {
+            return "#DC2626"                    // engagement (live-fire safety colour)
         }
-        if (_communicationLost) {
-            return "#6B7280"                    // disconnected
-        }
-        var mode = _activeVehicle.flightMode
-        if (mode === _abortModeName) {
-            return "#F59E0B"                    // abort
-        }
-        if (mode === _engagementModeName || mode === _visionEngagementModeName || mode === _pnEngagementModeName) {
-            return "#DC2626"                    // engagement (coordinate, vision, or PN)
-        }
-        if (mode === qsTr("Standoff") || mode === qsTr("Takeoff") || mode === _holdModeName || _activeVehicle.flying) {
-            return "#22C55E"                    // normal operations
-        }
-        return "#1E88E5"                        // connected, on the ground / ready
+        return "#1B2228"                        // neutral tactical chrome (windowShade dark)
     }
-    // STRATUM: all ribbon content (logo, status text, mode, telemetry) renders black.
-    readonly property color _ribbonTextColor: "#000000"
+    // STRATUM: ribbon content (logo, status text, mode, telemetry) binds to qgcPal.text
+    // (STRATUM-Agent-Context.md §2/§4: dark palette resolves this to #F1F4F7).
+    readonly property color _ribbonTextColor: qgcPal.text
 
     function dropMainStatusIndicatorTool() {
         mainStatusIndicator.dropMainStatusIndicator();
@@ -66,6 +51,19 @@ Item {
     Rectangle {
         anchors.fill:   parent
         color:          _ribbonColor
+    }
+
+    // STRATUM: 2-px accent under-rule at the base of the toolbar. Reads the ribbon
+    // as a discrete strip on the map background instead of a bare color band. Uses
+    // the current branding accent so a palette re-tune propagates automatically.
+    Rectangle {
+        anchors.left:   parent.left
+        anchors.right:  parent.right
+        anchors.bottom: parent.bottom
+        height:         2
+        color:          qgcPal.brandingPurple
+        opacity:        0.85
+        z:              10
     }
 
     QGCFlickable {
@@ -97,12 +95,28 @@ Item {
                             id:                 qgcButton
                             objectName:         "toolbar_qgcLogo"
                             Layout.fillHeight:  true
-                            // STRATUM: NEXAM (NX) company mark on the left, tinted black to
-                            // match the rest of the ribbon content.
+                            // STRATUM: NEXAM (NX) company mark on the left, tinted to the
+                            // ribbon text token (qgcPal.text) so it matches other ribbon content.
                             icon.source:        "/res/NXLogo.svg"
                             logo:               true
                             logoColor:          _ribbonTextColor
                             onClicked:          mainWindow.showToolSelectDialog()
+                        }
+
+                        // STRATUM: dropdown chevron next to the NX mark so operators see
+                        // the logo is a menu trigger (Fly / Configure / Settings / Close).
+                        QGCLabel {
+                            Layout.alignment:   Qt.AlignVCenter
+                            Layout.leftMargin:  -ScreenTools.defaultFontPixelWidth * 0.6
+                            text:               "\u25BE"
+                            color:              _ribbonTextColor
+                            font.pointSize:     ScreenTools.smallFontPointSize
+                            opacity:            0.85
+                            MouseArea {
+                                anchors.fill:   parent
+                                onClicked:      mainWindow.showToolSelectDialog()
+                                cursorShape:    Qt.PointingHandCursor
+                            }
                         }
 
                         MainStatusIndicator {

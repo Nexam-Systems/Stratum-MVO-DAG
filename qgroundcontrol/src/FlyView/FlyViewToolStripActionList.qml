@@ -28,6 +28,7 @@ ToolStripActionList {
         GuidedActionStandoffMode { },       // Standoff flight mode (hold-to-confirm)
         GuidedActionLand { },               // Land flight mode
         GuidedActionHold { },               // Hold flight mode
+        FlyViewFlightModeAction { },        // STRATUM: flight-mode picker (moved off the ribbon per §3.1/§3.2)
         GuidedActionAbort { },              // PX4 custom "Abort" flight mode (sub=22)
         // STRATUM: PX4 custom "Engagement" flight mode (sub=21). Routed through the
         // engagement controller so the abort destination is armed (PARAM_SET) before commit.
@@ -40,27 +41,6 @@ ToolStripActionList {
                 }
             }
         },
-        // STRATUM: PX4 custom "Vision Engagement" flight mode (sub=23) -- camera-guided,
-        // no map target. Reuses the SAME engagement controller (arm-on-engage).
-        VisionEngageAction {
-            onTriggered: {
-                if (_root.engagementController) {
-                    _root.engagementController.visionEngage()
-                } else if (QGroundControl.multiVehicleManager.activeVehicle) {
-                    QGroundControl.multiVehicleManager.activeVehicle.flightMode = qsTr("Vision Engagement")
-                }
-            }
-        },
-        // STRATUM: PX4 custom "PN Engagement" flight mode (sub=24 -> nav_state 30) --
-        // proportional navigation plus a closing-speed regulator against the LATCHED
-        // standoff target. Unlike Engage and Vision above this is a hold-to-confirm
-        // action (GuidedActionPnEngage -> actionPnEngage), which still reaches
-        // EngagementController.pnEngage() and therefore still arms the abort
-        // destination; see the header of GuidedActionPnEngage.qml.
-        GuidedActionPnEngage { },
-        // STRATUM: Tracking on/off toggle -- enables/disables the already-running
-        // companion tracker via Vehicle.setTrackerEnabled(bool) (NEXAM_TRACKER_CONFIG 42005).
-        TrackingToggleAction { },
         FlyViewOrchestrationAction { }   // STRATUM MVO S1 debug harness (throwaway; removed at S3)
     ]
 }

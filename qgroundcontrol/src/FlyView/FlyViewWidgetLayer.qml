@@ -47,6 +47,19 @@ Item {
     function toggleStandoff() {
         standoffPanel.toggle()
     }
+    // STRATUM: fast-path invoked by the map's "Set Standoff here" drop-panel entry.
+    // Pre-fills the target lat/lon fields then opens the panel; the operator can
+    // still adjust geometry (distance / height / direction) or re-pick the target
+    // with the crosshair before committing via the panel's Set Standoff button.
+    function openStandoffAt(coordinate) {
+        if (!coordinate || !coordinate.isValid) {
+            standoffPanel.open()
+            return
+        }
+        standoffLatField.text = coordinate.latitude.toFixed(7)
+        standoffLonField.text = coordinate.longitude.toFixed(7)
+        standoffPanel.open()
+    }
 
     QGCPalette { id: qgcPal; colorGroupEnabled: true }
 
