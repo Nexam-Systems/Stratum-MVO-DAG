@@ -1,0 +1,687 @@
+<title>STRATUM Ring Ops</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira:wght@500;600;700&family=Saira+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    /* light theme (bare :root) — clean tactical brief */
+    --bg:#e9edf1;
+    --surface:#ffffff;
+    --surface-2:#f2f5f8;
+    --ink:#141d26;
+    --ink-2:#3a4855;
+    --muted:#657585;
+    --line:#d3dbe3;
+    --line-strong:#b9c4ce;
+    --accent:#0d7f8f;
+    --accent-ink:#0a5f6c;
+    --nominal:#2f9e5f;
+    --caution:#c98a12;
+    --critical:#cf4436;
+    --v1:#0d8fa3;   /* vehicle 1 */
+    --v2:#b57611;   /* vehicle 2 */
+    --v3:#7255c4;   /* vehicle 3 */
+    --grid:rgba(20,29,38,.08);
+    --shadow:0 1px 2px rgba(20,29,38,.06),0 8px 24px rgba(20,29,38,.06);
+    --banner:#0d7f8f;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0b0f14;
+      --surface:#121820;
+      --surface-2:#171f29;
+      --ink:#e7eef5;
+      --ink-2:#b7c4d1;
+      --muted:#7d8b9a;
+      --line:#24303c;
+      --line-strong:#33424f;
+      --accent:#43b7c8;
+      --accent-ink:#7ad4e2;
+      --nominal:#4fb87b;
+      --caution:#e0a83a;
+      --critical:#e0574a;
+      --v1:#43b7c8;
+      --v2:#e0a83a;
+      --v3:#9b83e6;
+      --grid:rgba(231,238,245,.07);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 30px rgba(0,0,0,.35);
+      --banner:#0e2b31;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0b0f14;
+    --surface:#121820;
+    --surface-2:#171f29;
+    --ink:#e7eef5;
+    --ink-2:#b7c4d1;
+    --muted:#7d8b9a;
+    --line:#24303c;
+    --line-strong:#33424f;
+    --accent:#43b7c8;
+    --accent-ink:#7ad4e2;
+    --nominal:#4fb87b;
+    --caution:#e0a83a;
+    --critical:#e0574a;
+    --v1:#43b7c8;
+    --v2:#e0a83a;
+    --v3:#9b83e6;
+    --grid:rgba(231,238,245,.07);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 30px rgba(0,0,0,.35);
+    --banner:#0e2b31;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:940px;margin:0 auto;padding-block:0;padding-left:20px;padding-right:20px}
+
+  /* ---- typographic system ---- */
+  h1,h2,h3,.eyebrow,.lane-name,.step-t,.stat-k{font-family:"Saira","Saira Semi Condensed",system-ui,sans-serif}
+  .mono,.data,.chip-k,.ring-note,.pill,.doc-id{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+  .eyebrow{font-size:12px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--accent-ink)}
+  h2{font-size:clamp(24px,3.4vw,34px);font-weight:700;letter-spacing:-.01em;line-height:1.1;margin:.2em 0 .35em;text-wrap:balance}
+  h3{font-size:18px;font-weight:600;letter-spacing:.01em;margin:0 0 .3em}
+  p{margin:0 0 1em;color:var(--ink-2);max-width:68ch}
+  strong{color:var(--ink);font-weight:600}
+
+  /* ---- classification banner ---- */
+  .classbar{
+    position:sticky;top:env(safe-area-inset-top,0px);z-index:50;
+    background:var(--banner);color:#fff;
+    font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;text-align:center;
+    padding:6px 12px;border-bottom:1px solid rgba(255,255,255,.15);
+  }
+  :root[data-theme="light"] .classbar,:root:not([data-theme="dark"]) .classbar{color:#eafcff}
+
+  /* ---- hero ---- */
+  .hero{padding:44px 0 22px}
+  .hero .id-row{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;font-size:12px;color:var(--muted);margin-bottom:22px}
+  .doc-id{color:var(--accent-ink);font-weight:600;letter-spacing:.04em}
+  .hero h1{
+    font-size:clamp(34px,6.2vw,60px);font-weight:700;line-height:1.02;letter-spacing:-.02em;
+    margin:0 0 .25em;text-wrap:balance;
+  }
+  .hero .sub{font-size:clamp(17px,2.4vw,21px);color:var(--ink-2);max-width:60ch;margin-bottom:0}
+  .tagline{
+    display:inline-flex;gap:14px;flex-wrap:wrap;margin-top:26px;
+    font-family:"Saira",sans-serif;font-weight:600;font-size:15px;letter-spacing:.02em;
+  }
+  .tagline span{color:var(--accent-ink);position:relative;padding-left:20px}
+  .tagline span::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:2px;background:var(--accent);transform:translateY(-50%) rotate(45deg)}
+
+  /* ---- section frame ---- */
+  section{padding:34px 0;border-top:1px solid var(--line)}
+  .sec-head{margin-bottom:20px}
+
+  /* ---- glossary chips ---- */
+  .chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:6px}
+  .chip{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:13px 15px;box-shadow:var(--shadow)}
+  .chip-k{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-ink);display:block;margin-bottom:4px}
+  .chip-v{font-size:13.5px;color:var(--ink-2);line-height:1.5}
+
+  /* ---- figure card ---- */
+  figure{margin:0}
+  .fig{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow);overflow:hidden}
+  .fig svg{display:block;width:100%;height:auto}
+  figcaption{font-size:13px;color:var(--muted);margin-top:12px;padding-top:12px;border-top:1px solid var(--line);line-height:1.5}
+  figcaption b{color:var(--ink-2);font-weight:600}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-2)}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+  /* ---- two-col ---- */
+  .grid2{display:grid;grid-template-columns:1.05fr .95fr;gap:26px;align-items:start}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr;gap:20px}}
+
+  /* ---- steps / timeline ---- */
+  .flow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;counter-reset:st}
+  @media(max-width:720px){.flow{grid-template-columns:1fr 1fr}}
+  .step{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:14px 13px;position:relative}
+  .step .n{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--accent-ink);font-weight:600}
+  .step .step-t{font-weight:600;font-size:15px;margin:3px 0 4px;letter-spacing:.01em}
+  .step .step-d{font-size:12.5px;color:var(--muted);line-height:1.45}
+
+  .exec{display:flex;flex-direction:column;gap:0;margin-top:8px}
+  .estep{display:grid;grid-template-columns:26px 1fr;gap:14px;padding:12px 0}
+  .estep:not(:last-child){border-bottom:1px dashed var(--line)}
+  .estep .dot{position:relative;display:flex;justify-content:center}
+  .estep .dot b{width:11px;height:11px;border-radius:50%;background:var(--accent);margin-top:6px;box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 22%,transparent)}
+  .estep .dot::after{content:"";position:absolute;top:20px;bottom:-18px;width:2px;background:var(--line)}
+  .estep:last-child .dot::after{display:none}
+  .estep h4{font-family:"Saira",sans-serif;font-size:15.5px;font-weight:600;margin:0 0 2px}
+  .estep p{margin:0;font-size:13.5px}
+  .estep .tag{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--accent-ink);letter-spacing:.03em}
+
+  /* ---- layered defense list ---- */
+  .layers{display:grid;gap:12px}
+  .layer{display:grid;grid-template-columns:52px 1fr;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px 16px;box-shadow:var(--shadow)}
+  .layer .lnum{font-family:"Saira",sans-serif;font-size:30px;font-weight:700;color:var(--accent);line-height:1;opacity:.9}
+  .layer h4{font-family:"Saira",sans-serif;font-size:16px;font-weight:600;margin:0 0 3px}
+  .layer p{margin:0;font-size:13.5px}
+  .layer .when{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:6px;display:block}
+
+  /* ---- status strip mock ---- */
+  .strip{background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+  .strip-top{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;background:var(--surface-2);border-bottom:1px solid var(--line);font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .lane{display:grid;grid-template-columns:96px 1fr auto;gap:10px;align-items:center;padding:12px 14px}
+  .lane+.lane{border-top:1px solid var(--line)}
+  .lane-name{font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px}
+  .lane-name .tick{width:10px;height:10px;border-radius:2px}
+  .lane-data{display:flex;flex-wrap:wrap;gap:6px 14px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-2)}
+  .lane-data span b{color:var(--ink);font-weight:600}
+  .pill{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;letter-spacing:.05em;padding:3px 9px;border-radius:999px;white-space:nowrap;text-transform:uppercase}
+  .p-ok{background:color-mix(in srgb,var(--nominal) 16%,transparent);color:var(--nominal)}
+  .p-warn{background:color-mix(in srgb,var(--caution) 18%,transparent);color:var(--caution)}
+  .p-crit{background:color-mix(in srgb,var(--critical) 16%,transparent);color:var(--critical)}
+  .advisory{margin-top:14px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;background:color-mix(in srgb,var(--caution) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--caution) 45%,var(--line));border-radius:10px;padding:12px 15px}
+  .advisory .msg{font-size:13.5px;color:var(--ink-2)}
+  .advisory .msg b{color:var(--ink)}
+  .holdall{font-family:"Saira",sans-serif;font-weight:700;letter-spacing:.08em;font-size:13px;text-transform:uppercase;color:#fff;background:var(--critical);border:none;border-radius:8px;padding:9px 18px;cursor:default}
+
+  /* ---- callout ---- */
+  .callout{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;padding:16px 18px;box-shadow:var(--shadow)}
+  .callout.warn{border-left-color:var(--caution)}
+  .callout.crit{border-left-color:var(--critical)}
+  .callout h4{font-family:"Saira",sans-serif;font-size:15px;margin:0 0 5px;font-weight:600}
+  .callout p{margin:0;font-size:13.5px}
+
+  /* ---- safety cards ---- */
+  .safety{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:640px){.safety{grid-template-columns:1fr}}
+  .sc{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:var(--shadow)}
+  .sc .ev{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--critical);font-weight:600;margin-bottom:5px;display:block}
+  .sc .ev.ok{color:var(--nominal)}
+  .sc h4{font-family:"Saira",sans-serif;font-size:15.5px;margin:0 0 5px;font-weight:600}
+  .sc p{margin:0;font-size:13px}
+
+  /* ---- engage gate ---- */
+  .gate-flow{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap}
+  .gate-node{flex:1 1 150px;min-width:140px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:13px;text-align:center}
+  .gate-node .gt{font-family:"Saira",sans-serif;font-weight:600;font-size:14.5px;margin-bottom:2px}
+  .gate-node .gd{font-size:11.5px;color:var(--muted);line-height:1.4}
+  .gate-node.gkey{border-color:color-mix(in srgb,var(--critical) 55%,var(--line));background:color-mix(in srgb,var(--critical) 8%,var(--surface))}
+  .gate-node.gkey .gt{color:var(--critical)}
+  .gate-arrow{display:flex;align-items:center;color:var(--muted);font-size:18px;font-family:"IBM Plex Mono",monospace}
+  @media(max-width:640px){.gate-arrow{transform:rotate(90deg);justify-content:center;width:100%}}
+
+  /* ---- footer ---- */
+  footer{border-top:1px solid var(--line);padding:30px 0 46px;margin-top:8px}
+  .foot-row{display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:space-between;align-items:baseline;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted)}
+  .foot-line{font-family:"Saira",sans-serif;font-weight:700;font-size:clamp(18px,3vw,24px);color:var(--ink);letter-spacing:.01em;margin:6px 0 18px}
+
+  .keynum{display:inline-flex;align-items:baseline;gap:6px}
+  .keynum b{font-family:"IBM Plex Mono",monospace;font-size:15px;color:var(--accent-ink);font-weight:600}
+
+  @media(prefers-reduced-motion:reduce){.sweep{display:none}}
+</style>
+
+<div class="classbar">Nexam Systems · STRATUM Operations Concept · Operator Briefing · Working Draft v0.1</div>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="id-row">
+      <span class="doc-id">NXM-OPSCON-STRATUM-MVO-001</span>
+      <span>Rev 0.1 — 19 Sep 2026</span>
+      <span>System: STRATUM-Desktop · Multi-Vehicle Orchestration</span>
+      <span>Platform: Dagger UAS ×3</span>
+    </div>
+    <h1>Three Daggers.<br>One ring. One operator.</h1>
+    <p class="sub">STRATUM coordinates up to three Dagger air vehicles onto a standoff ring around a single target you designate — planned on the ground, flown by the aircraft, supervised from one screen.</p>
+    <div class="tagline">
+      <span>You designate</span>
+      <span>STRATUM plans</span>
+      <span>The aircraft fly it</span>
+    </div>
+  </header>
+
+  <!-- 1. THE CONCEPT -->
+  <section id="concept">
+    <div class="sec-head">
+      <div class="eyebrow">The concept</div>
+      <h2>A surveillance ring, built by geometry</h2>
+    </div>
+    <div class="grid2">
+      <div>
+        <p>You mark one point on the map. STRATUM draws a circle around it — the <strong>standoff ring</strong> — and places up to three hold stations on that circle. Each Dagger flies to its own station and turns to face the target, giving you three simultaneous eyes-on angles from a safe distance.</p>
+        <p>The division of labour is deliberate. <strong>STRATUM sends intent; the autopilot owns the geometry.</strong> You transmit a target and a handful of numbers; each aircraft computes its own hold point, hold altitude and facing heading. There is no link between the aircraft and no need for one — coordination happens on the ground, before the vehicles ever separate.</p>
+        <p>Because the aircraft do the flying, STRATUM does not need a trajectory generator. It needs a <strong>scheduler</strong> and a <strong>constraint</strong>. That single insight is what keeps the whole capability small, proven and safe.</p>
+      </div>
+      <div class="chips" aria-label="Key terms">
+        <div class="chip"><span class="chip-k">Target</span><span class="chip-v">The single point you designate. One per mission.</span></div>
+        <div class="chip"><span class="chip-k">Standoff ring</span><span class="chip-v">A circle of radius R around the target, at height H. Drawn, never guessed.</span></div>
+        <div class="chip"><span class="chip-k">Ring slot</span><span class="chip-v">A hold station on the ring, set by its bearing θ from the target. One aircraft per slot.</span></div>
+        <div class="chip"><span class="chip-k">Transit level</span><span class="chip-v">The altitude an aircraft flies its run-in at — distinct from its hold height.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. THE PICTURE -->
+  <section id="ring">
+    <div class="sec-head">
+      <div class="eyebrow">The picture</div>
+      <h2>What the ring looks like</h2>
+    </div>
+    <figure>
+      <div class="fig">
+        <svg viewBox="0 0 640 440" role="img" aria-label="Top-down view of three vehicles on a standoff ring around a target, with run-in paths from a launch point.">
+          <defs>
+            <radialGradient id="sweepGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.30"/>
+              <stop offset="70%" stop-color="var(--accent)" stop-opacity="0.05"/>
+              <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+            </radialGradient>
+            <marker id="arw" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--muted)"/></marker>
+          </defs>
+          <!-- range rings -->
+          <circle cx="230" cy="210" r="180" fill="none" stroke="var(--grid)" stroke-width="1"/>
+          <circle cx="230" cy="210" r="120" fill="none" stroke="var(--grid)" stroke-width="1"/>
+          <!-- main standoff ring -->
+          <circle cx="230" cy="210" r="150" fill="none" stroke="var(--line-strong)" stroke-width="1.5" stroke-dasharray="5 5"/>
+          <!-- radar sweep -->
+          <g class="sweep" style="transform-origin:230px 210px">
+            <path d="M230,210 L230,60 A150,150 0 0,1 360,285 Z" fill="url(#sweepGrad)"/>
+            <animateTransform attributeName="transform" type="rotate" from="0 230 210" to="360 230 210" dur="8s" repeatCount="indefinite"/>
+          </g>
+          <!-- bearing ticks -->
+          <g font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)" text-anchor="middle">
+            <text x="230" y="48">000°</text>
+            <text x="398" y="214">090°</text>
+            <text x="230" y="384">180°</text>
+            <text x="58" y="214">270°</text>
+          </g>
+          <!-- target crosshair -->
+          <g>
+            <circle cx="230" cy="210" r="7" fill="none" stroke="var(--critical)" stroke-width="2"/>
+            <line x1="230" y1="196" x2="230" y2="224" stroke="var(--critical)" stroke-width="1.5"/>
+            <line x1="216" y1="210" x2="244" y2="210" stroke="var(--critical)" stroke-width="1.5"/>
+            <text x="230" y="240" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--critical)" text-anchor="middle" font-weight="600">TARGET</text>
+          </g>
+          <!-- R radius label -->
+          <line x1="230" y1="210" x2="380" y2="210" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3"/>
+          <text x="305" y="202" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink-2)" text-anchor="middle">R = radius</text>
+          <!-- launch cluster -->
+          <g>
+            <circle cx="230" cy="418" r="4" fill="var(--v1)"/>
+            <circle cx="222" cy="422" r="4" fill="var(--v2)"/>
+            <circle cx="238" cy="422" r="4" fill="var(--v3)"/>
+            <text x="230" y="438" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)" text-anchor="middle">LAUNCH (co-located)</text>
+          </g>
+          <!-- run-in paths: launch(230,420) to each slot -->
+          <!-- slot bearings 030, 150, 270 on r=150 about (230,210) -->
+          <!-- V1 @030: x=230+150*sin30=305, y=210-150*cos30=80.1 -->
+          <!-- V2 @150: x=230+75=305, y=210+129.9=339.9 -->
+          <!-- V3 @270: x=230-150=80, y=210 -->
+          <path d="M230,420 L305,80" fill="none" stroke="var(--v1)" stroke-width="1.6" stroke-dasharray="4 4" opacity=".7" marker-end="url(#arw)"/>
+          <path d="M230,420 L305,340" fill="none" stroke="var(--v2)" stroke-width="1.6" stroke-dasharray="4 4" opacity=".7" marker-end="url(#arw)"/>
+          <path d="M230,420 L80,210" fill="none" stroke="var(--v3)" stroke-width="1.6" stroke-dasharray="4 4" opacity=".7" marker-end="url(#arw)"/>
+          <!-- slot markers -->
+          <g>
+            <circle cx="305" cy="80" r="9" fill="var(--v1)"/><text x="305" y="84" font-family="IBM Plex Mono, monospace" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">1</text>
+            <text x="305" y="62" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--v1)" text-anchor="middle">SLOT θ=030°</text>
+          </g>
+          <g>
+            <circle cx="305" cy="340" r="9" fill="var(--v2)"/><text x="305" y="344" font-family="IBM Plex Mono, monospace" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">2</text>
+            <text x="305" y="364" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--v2)" text-anchor="middle">SLOT θ=150°</text>
+          </g>
+          <g>
+            <circle cx="80" cy="210" r="9" fill="var(--v3)"/><text x="80" y="214" font-family="IBM Plex Mono, monospace" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">3</text>
+            <text x="80" y="192" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--v3)" text-anchor="middle">SLOT θ=270°</text>
+          </g>
+          <!-- separation annotation -->
+          <text x="470" y="90" font-family="Saira, sans-serif" font-size="14" fill="var(--ink)" font-weight="600">Terminal separation</text>
+          <text x="470" y="112" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink-2)">120° spacing →</text>
+          <text x="470" y="130" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink-2)">1.73 × R apart</text>
+          <text x="470" y="158" font-family="IBM Plex Mono, monospace" font-size="11.5" fill="var(--muted)">e.g. 300 m ring</text>
+          <text x="470" y="175" font-family="IBM Plex Mono, monospace" font-size="11.5" fill="var(--muted)">→ ~519 m between</text>
+          <text x="470" y="192" font-family="IBM Plex Mono, monospace" font-size="11.5" fill="var(--muted)">   aircraft</text>
+          <text x="470" y="230" font-family="Saira, sans-serif" font-size="14" fill="var(--ink)" font-weight="600">Where conflict</text>
+          <text x="470" y="248" font-family="Saira, sans-serif" font-size="14" fill="var(--ink)" font-weight="600">actually lives</text>
+          <text x="470" y="270" font-family="IBM Plex Mono, monospace" font-size="11.5" fill="var(--muted)">the transit phase —</text>
+          <text x="470" y="287" font-family="IBM Plex Mono, monospace" font-size="11.5" fill="var(--muted)">near the launch</text>
+          <text x="470" y="304" font-family="IBM Plex Mono, monospace" font-size="11.5" fill="var(--muted)">point, not the ring.</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--v1)"></i>Vehicle 1</span>
+        <span><i style="background:var(--v2)"></i>Vehicle 2</span>
+        <span><i style="background:var(--v3)"></i>Vehicle 3</span>
+        <span><i style="background:var(--critical)"></i>Target</span>
+        <span><i style="background:var(--line-strong)"></i>Standoff ring</span>
+      </div>
+      <figcaption>On station, the aircraft are hundreds of metres apart — the ring geometry separates them for free. <b>The only place they come close is on the way out, near a shared launch point.</b> That is where the orchestration effort is spent.</figcaption>
+    </figure>
+
+    <p style="margin-top:26px">The map above is a view <em>from directly overhead</em>. The altitude picture further down is a view <em>from the side</em>. If those two are hard to fuse, read them through the perspective view below — the same formed ring, seen at an angle, with the aircraft holding their stations up in the air above the ground target.</p>
+
+    <figure>
+      <div class="fig">
+        <svg viewBox="0 0 640 470" role="img" aria-label="Isometric perspective view of the standoff ring: a horizontal circle at altitude H around a ground target, with three aircraft on station 120 degrees apart, each with a line of sight to the target.">
+          <defs>
+            <marker id="tri" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="var(--muted)"/></marker>
+          </defs>
+          <!-- ground concentric footprint ellipses -->
+          <ellipse cx="300" cy="300" rx="165" ry="72" fill="none" stroke="var(--grid)" stroke-width="1"/>
+          <ellipse cx="300" cy="300" rx="102" ry="45" fill="none" stroke="var(--grid)" stroke-width="1"/>
+          <!-- footprint of the ring (dashed) -->
+          <ellipse cx="300" cy="300" rx="165" ry="72" fill="none" stroke="var(--line)" stroke-width="1.2" stroke-dasharray="3 4"/>
+          <!-- radial ground lines target -> footprint points -->
+          <g stroke="var(--grid)" stroke-width="1">
+            <line x1="300" y1="300" x2="382.5" y2="237.6"/>
+            <line x1="300" y1="300" x2="382.5" y2="362.4"/>
+            <line x1="300" y1="300" x2="135" y2="300"/>
+          </g>
+          <!-- faint vertical column hints (east/west) -->
+          <g stroke="var(--grid)" stroke-width="1" stroke-dasharray="2 4">
+            <line x1="465" y1="180" x2="465" y2="300"/>
+          </g>
+          <!-- ground target crosshair -->
+          <g>
+            <ellipse cx="300" cy="300" rx="9" ry="4" fill="none" stroke="var(--critical)" stroke-width="1.6"/>
+            <line x1="300" y1="290" x2="300" y2="310" stroke="var(--critical)" stroke-width="1.6"/>
+            <line x1="284" y1="300" x2="316" y2="300" stroke="var(--critical)" stroke-width="1.6"/>
+            <text x="300" y="330" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--critical)" text-anchor="middle" font-weight="600">TARGET</text>
+          </g>
+          <!-- H altitude measure (left) -->
+          <line x1="120" y1="180" x2="120" y2="300" stroke="var(--muted)" stroke-width="1"/>
+          <path d="M120,180 l-4,8 l8,0 z" fill="var(--muted)"/>
+          <path d="M120,300 l-4,-8 l8,0 z" fill="var(--muted)"/>
+          <text x="112" y="235" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink-2)" text-anchor="end">H</text>
+          <text x="112" y="251" font-family="IBM Plex Mono, monospace" font-size="9.5" fill="var(--muted)" text-anchor="end">hold ht</text>
+          <!-- drop lines aircraft -> ground footprint (dashed) -->
+          <g stroke-dasharray="4 4" stroke-width="1.2">
+            <line x1="382.5" y1="117.6" x2="382.5" y2="237.6" stroke="var(--v1)" opacity=".55"/>
+            <line x1="382.5" y1="242.4" x2="382.5" y2="362.4" stroke="var(--v2)" opacity=".55"/>
+            <line x1="135" y1="180" x2="135" y2="300" stroke="var(--v3)" opacity=".55"/>
+          </g>
+          <!-- sight lines aircraft -> target -->
+          <g stroke-width="1.2" stroke-dasharray="2 3">
+            <line x1="382.5" y1="117.6" x2="300" y2="300" stroke="var(--v1)" opacity=".5"/>
+            <line x1="382.5" y1="242.4" x2="300" y2="300" stroke="var(--v2)" opacity=".5"/>
+            <line x1="135" y1="180" x2="300" y2="300" stroke="var(--v3)" opacity=".5"/>
+          </g>
+          <!-- flight ring ellipse (at altitude) -->
+          <ellipse cx="300" cy="180" rx="165" ry="72" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="5 5"/>
+          <text x="300" y="96" font-family="Saira, sans-serif" font-size="13" fill="var(--accent-ink)" text-anchor="middle" font-weight="600">STANDOFF RING · altitude H</text>
+          <!-- aircraft on the ring -->
+          <!-- V1 slot 030 -->
+          <g>
+            <circle cx="382.5" cy="117.6" r="11" fill="var(--v1)"/>
+            <text x="382.5" y="121.6" font-family="IBM Plex Mono, monospace" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">1</text>
+            <text x="399" y="115" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--v1)">DGR-01 · 030°</text>
+          </g>
+          <!-- V2 slot 150 -->
+          <g>
+            <circle cx="382.5" cy="242.4" r="11" fill="var(--v2)"/>
+            <text x="382.5" y="246.4" font-family="IBM Plex Mono, monospace" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">2</text>
+            <text x="399" y="246" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--v2)">DGR-02 · 150°</text>
+          </g>
+          <!-- V3 slot 270 -->
+          <g>
+            <circle cx="135" cy="180" r="11" fill="var(--v3)"/>
+            <text x="135" y="184" font-family="IBM Plex Mono, monospace" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">3</text>
+            <text x="120" y="169" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--v3)" text-anchor="end">DGR-03 · 270°</text>
+          </g>
+          <!-- chord separation note -->
+          <text x="470" y="405" font-family="Saira, sans-serif" font-size="13" fill="var(--ink)" font-weight="600" text-anchor="middle">120° apart on the ring</text>
+          <text x="470" y="424" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)" text-anchor="middle">= hundreds of metres</text>
+          <text x="470" y="440" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)" text-anchor="middle">between airframes</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--accent)"></i>Ring at altitude H</span>
+        <span style="color:var(--muted)"><i style="background:var(--line-strong)"></i>Ground footprint</span>
+        <span style="color:var(--muted)"><span style="display:inline-block;width:14px;border-top:1.5px dashed var(--muted);margin-right:6px;vertical-align:middle"></span>Line of sight to target</span>
+      </div>
+      <figcaption>The perspective that fuses the other two. The <b>solid accent ellipse</b> is the ring — a flat circle held up in the air at height H; the <b>dashed ellipse on the ground</b> is where it sits over the map. Each aircraft holds its station on the ring and keeps a <b>line of sight down to the target</b>. Read the overhead map for bearings, the side view for altitude — this is both at once.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 3. HOW A MISSION RUNS -->
+  <section id="mission">
+    <div class="sec-head">
+      <div class="eyebrow">How a mission runs</div>
+      <h2>Five steps to a committed ring</h2>
+    </div>
+    <p>STRATUM proposes; you dispose. The planning wizard walks you through five pages, and nothing reaches the aircraft until you commit.</p>
+    <div class="flow">
+      <div class="step"><span class="n">01</span><div class="step-t">Target</div><div class="step-d">Drop the single target point on the map.</div></div>
+      <div class="step"><span class="n">02</span><div class="step-t">Ring</div><div class="step-d">Set radius R and height H. The ring draws itself around the target.</div></div>
+      <div class="step"><span class="n">03</span><div class="step-t">Slots</div><div class="step-d">Place hold stations. Handles won't drag closer than the safe minimum.</div></div>
+      <div class="step"><span class="n">04</span><div class="step-t">Review</div><div class="step-d">See the proposed aircraft-to-slot assignment, path lengths and arrival skew.</div></div>
+      <div class="step"><span class="n">05</span><div class="step-t">Commit</div><div class="step-d">Authorise. STRATUM launches and sequences the ring.</div></div>
+    </div>
+
+    <div style="height:26px"></div>
+    <div class="grid2">
+      <div>
+        <h3>What STRATUM decides for you</h3>
+        <p>At n=3 the assignment problem has only six possibilities, so STRATUM simply checks them all. It proposes the pairing that gives the <strong>shortest total run-in with no crossing paths</strong> — the same choice that happens to buy you deconfliction. You can override any slot; if your override would cross two paths, STRATUM flags it with an advisory. It does not block you.</p>
+        <h3>Then, per aircraft</h3>
+        <p>Each Dagger climbs to <strong>its own transit level</strong>, is committed on a staggered schedule, runs in at that level, and drops to the common hold height only once it is over its own slot.</p>
+      </div>
+      <div>
+        <h3 style="margin-bottom:10px">Execution, one aircraft</h3>
+        <div class="exec">
+          <div class="estep"><div class="dot"><b></b></div><div><h4>Take off &amp; climb</h4><p>Aircraft climbs to its assigned transit level. <span class="tag">altitude confirmed</span></p></div></div>
+          <div class="estep"><div class="dot"><b></b></div><div><h4>Commit</h4><p>STRATUM sends target + bearing, switches the aircraft into Standoff. <span class="tag">command accepted</span></p></div></div>
+          <div class="estep"><div class="dot"><b></b></div><div><h4>Run-in</h4><p>Aircraft flies its straight approach at the transit level. <span class="tag">nav: standoff</span></p></div></div>
+          <div class="estep"><div class="dot"><b></b></div><div><h4>On station</h4><p>Over its slot, it settles to hold height and faces the target. <span class="tag">nav: hold</span></p></div></div>
+        </div>
+      </div>
+    </div>
+    <div style="height:18px"></div>
+    <div class="callout">
+      <h4>"On station" means three things, not one</h4>
+      <p>STRATUM only declares an aircraft on station when it has switched into Hold <em>and</em> is within the slot's acceptance radius <em>and</em> is at the right altitude. A vehicle can reach Hold by other routes — an operator action, a failsafe — so all three must hold before the light goes green. Belt and braces, at no cost.</p>
+    </div>
+  </section>
+
+  <!-- 4. DECONFLICTION -->
+  <section id="deconfliction">
+    <div class="sec-head">
+      <div class="eyebrow">Keeping them apart</div>
+      <h2>Deconfliction by construction</h2>
+    </div>
+    <p>STRATUM never commands an aircraft to dodge another. A ground-commanded avoidance loop cannot close fast enough to be safe — by the time a warning crosses the link and a manoeuvre is acked, a 15 m/s aircraft has already flown through the keepout volume. So separation is <strong>guaranteed by the plan, before the aircraft leave the ground</strong>, in four independent layers.</p>
+
+    <figure style="margin:8px 0 22px">
+      <div class="fig">
+        <svg viewBox="0 0 640 300" role="img" aria-label="Side view showing three aircraft running in at three separate stacked altitudes, then converging to a common hold height over the target.">
+          <!-- ground -->
+          <line x1="30" y1="262" x2="610" y2="262" stroke="var(--line-strong)" stroke-width="1.5"/>
+          <g font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)"><text x="34" y="278">LAUNCH</text><text x="512" y="278">OVER SLOT / TARGET</text></g>
+          <!-- transit levels -->
+          <g stroke-dasharray="4 4" stroke-width="1.2">
+            <line x1="90" y1="70"  x2="470" y2="70"  stroke="var(--v1)" opacity=".65"/>
+            <line x1="90" y1="110" x2="470" y2="110" stroke="var(--v2)" opacity=".65"/>
+            <line x1="90" y1="150" x2="470" y2="150" stroke="var(--v3)" opacity=".65"/>
+          </g>
+          <!-- level labels -->
+          <g font-family="IBM Plex Mono, monospace" font-size="10.5" text-anchor="end">
+            <text x="84" y="74" fill="var(--v1)">LVL 1</text>
+            <text x="84" y="114" fill="var(--v2)">LVL 2</text>
+            <text x="84" y="154" fill="var(--v3)">LVL 3</text>
+          </g>
+          <!-- delta H bracket -->
+          <line x1="476" y1="70" x2="476" y2="150" stroke="var(--muted)" stroke-width="1"/>
+          <line x1="472" y1="70" x2="480" y2="70" stroke="var(--muted)" stroke-width="1"/>
+          <line x1="472" y1="110" x2="480" y2="110" stroke="var(--muted)" stroke-width="1"/>
+          <line x1="472" y1="150" x2="480" y2="150" stroke="var(--muted)" stroke-width="1"/>
+          <text x="486" y="106" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-2)">ΔH ≥ 10 m</text>
+          <!-- climb from launch -->
+          <path d="M70,262 L90,70"  stroke="var(--v1)" stroke-width="2" fill="none"/>
+          <path d="M70,262 L90,110" stroke="var(--v2)" stroke-width="2" fill="none"/>
+          <path d="M70,262 L90,150" stroke="var(--v3)" stroke-width="2" fill="none"/>
+          <!-- run-in (flat) -->
+          <path d="M90,70 L470,70"   stroke="var(--v1)" stroke-width="2.4" fill="none"/>
+          <path d="M90,110 L470,110" stroke="var(--v2)" stroke-width="2.4" fill="none"/>
+          <path d="M90,150 L470,150" stroke="var(--v3)" stroke-width="2.4" fill="none"/>
+          <!-- converge to common hold height -->
+          <path d="M470,70 L560,200"  stroke="var(--v1)" stroke-width="2" fill="none" stroke-dasharray="6 3"/>
+          <path d="M470,110 L560,200" stroke="var(--v2)" stroke-width="2" fill="none" stroke-dasharray="6 3"/>
+          <path d="M470,150 L560,200" stroke="var(--v3)" stroke-width="2" fill="none" stroke-dasharray="6 3"/>
+          <!-- aircraft markers on run-in -->
+          <g>
+            <path d="M250,70 l10,-5 l0,10 z" fill="var(--v1)"/>
+            <path d="M250,110 l10,-5 l0,10 z" fill="var(--v2)"/>
+            <path d="M250,150 l10,-5 l0,10 z" fill="var(--v3)"/>
+          </g>
+          <!-- common hold height line -->
+          <line x1="540" y1="200" x2="610" y2="200" stroke="var(--accent)" stroke-width="2"/>
+          <circle cx="560" cy="200" r="5" fill="var(--accent)"/>
+          <text x="568" y="196" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--accent-ink)">HOLD H (common)</text>
+          <!-- target on ground -->
+          <line x1="560" y1="200" x2="560" y2="262" stroke="var(--critical)" stroke-width="1" stroke-dasharray="3 3"/>
+          <circle cx="560" cy="262" r="4" fill="var(--critical)"/>
+          <!-- phase labels -->
+          <g font-family="Saira, sans-serif" font-size="12" fill="var(--muted)" text-anchor="middle">
+            <text x="80" y="26">CLIMB</text>
+            <text x="280" y="26">RUN-IN (stratified)</text>
+            <text x="515" y="26">DESCEND TO SLOT</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>Each aircraft runs in at <b>its own altitude</b>, separated vertically whatever their lateral paths do. Only once an aircraft is over its own slot — where the ring geometry already guarantees lateral separation — does it change height to the common hold level.</figcaption>
+    </figure>
+
+    <div class="layers">
+      <div class="layer"><div class="lnum">1</div><div><h4>Structural — at slot-placement time</h4><p>The wizard enforces a minimum angular separation between slots. You physically cannot drag two stations closer than the safe minimum, so terminal separation is settled on the ground and cannot fail in the air.</p><span class="when">before flight · in the UI</span></div></div>
+      <div class="layer"><div class="lnum">2</div><div><h4>Vertical — during transit</h4><p>Every aircraft is assigned a distinct transit level, at least 10 m apart. The run-ins are separated top-to-bottom by construction. This is the workhorse layer, and it costs one extra climb command per aircraft.</p><span class="when">before commit · one climb each</span></div></div>
+      <div class="layer"><div class="lnum">3</div><div><h4>Assignment &amp; schedule</h4><p>Crossing-free slot assignment removes lateral path crossings; staggered commit separates the departures in time. Both are computed in the planner before anyone flies.</p><span class="when">in the plan · free</span></div></div>
+      <div class="layer"><div class="lnum">4</div><div><h4>The monitor — advisory only</h4><p>In flight, STRATUM watches predicted separation and inflates the safe distance by each aircraft's own GPS accuracy. On a predicted breach it raises an advisory and offers one action — <strong>HOLD ALL</strong>. It recommends; it never manoeuvres on its own.</p><span class="when">in flight · operator-authorised</span></div></div>
+    </div>
+
+    <div style="height:16px"></div>
+    <div class="callout">
+      <h4>The bubble is not the criterion</h4>
+      <p>The 1 m body keepout is kept, but the number STRATUM actually enforces grows with measurement uncertainty: with typical GPS accuracy the working minimum is around <strong>7 m</strong>, seven times the nominal bubble. A criterion smaller than the measurement noise generates alarms, not safety — so the enforcement lives at slot-placement time, not in a runtime controller.</p>
+    </div>
+  </section>
+
+  <!-- 5. WHAT THE OPERATOR SEES -->
+  <section id="screen">
+    <div class="sec-head">
+      <div class="eyebrow">On your screen</div>
+      <h2>Three aircraft, one glance</h2>
+    </div>
+    <p>The orchestration status strip gives you one lane per aircraft — state, slot, altitude, link health and GPS accuracy — so what needs attention reads at a glance. Below is a representative view; the figures are illustrative.</p>
+    <div class="strip">
+      <div class="strip-top"><span>ORCHESTRATION · RING ACTIVE</span><span>TGT 33.6845 N · 073.0479 E</span></div>
+      <div class="lane">
+        <div class="lane-name"><span class="tick" style="background:var(--v1)"></span>DGR-01</div>
+        <div class="lane-data"><span>SLOT <b>030°</b></span><span>ALT <b>612 m</b></span><span>LINK <b>OK</b></span><span>hAcc <b>1.4 m</b></span></div>
+        <span class="pill p-ok">On station</span>
+      </div>
+      <div class="lane">
+        <div class="lane-name"><span class="tick" style="background:var(--v2)"></span>DGR-02</div>
+        <div class="lane-data"><span>SLOT <b>150°</b></span><span>ALT <b>598 m</b></span><span>LINK <b>OK</b></span><span>hAcc <b>1.6 m</b></span></div>
+        <span class="pill p-ok">On station</span>
+      </div>
+      <div class="lane">
+        <div class="lane-name"><span class="tick" style="background:var(--v3)"></span>DGR-03</div>
+        <div class="lane-data"><span>SLOT <b>270°</b></span><span>ALT <b>571 m</b></span><span>LINK <b>WEAK</b></span><span>hAcc <b>2.9 m</b></span></div>
+        <span class="pill p-warn">Run-in</span>
+      </div>
+    </div>
+    <div class="advisory">
+      <div class="msg"><b>Advisory:</b> DGR-03 GPS accuracy degraded — separation minimum grown to 9 m. Geometry still compliant. No action required.</div>
+      <button class="holdall" aria-hidden="true" tabindex="-1">Hold all</button>
+    </div>
+    <p style="margin-top:16px;font-size:13.5px;color:var(--muted)">Colour and shape both carry state, so the strip reads without reading every number. Green is nominal, amber is watch, red is act. The one-touch <strong style="color:var(--ink)">HOLD ALL</strong> is always one reach away.</p>
+  </section>
+
+  <!-- 6. ENGAGEMENT -->
+  <section id="engagement">
+    <div class="sec-head">
+      <div class="eyebrow">Terminal transition</div>
+      <h2>From ring to engagement</h2>
+    </div>
+    <p>An orchestrated standoff can transition to a coordinated <strong>engagement</strong> — the full remit is <em>designate → ring → deconflicted run-in → on station → operator-commanded ensemble engagement</em>, against the same ring target each aircraft already holds. It reuses the existing per-aircraft command path: no new link, no new firmware.</p>
+
+    <div class="gate-flow" style="margin:18px 0 20px">
+      <div class="gate-node"><div class="gt">On station</div><div class="gd">Ring held, target designated</div></div>
+      <div class="gate-arrow">→</div>
+      <div class="gate-node gkey"><div class="gt">Authorise engage</div><div class="gd">Second gate — separate from ARM, heavier</div></div>
+      <div class="gate-arrow">→</div>
+      <div class="gate-node"><div class="gt">Engage commanded</div><div class="gd">Ensemble transitions on your command</div></div>
+      <div class="gate-arrow">→</div>
+      <div class="gate-node"><div class="gt">Engaging</div><div class="gd">Coordinated terminal action</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="callout crit">
+        <h4>A second authorisation gate</h4>
+        <p>Engagement is a terminal action, so it carries its own explicit authorisation, distinct from and heavier than the ARM gate. ARM clears the flight; this gate clears the terminal transition. The ensemble engage command is inert until you set it.</p>
+      </div>
+      <div class="callout warn">
+        <h4>Abort is operator-only</h4>
+        <p>In the multi-vehicle case there is no self-abort on target loss — an aircraft that loses its target continues its existing single-vehicle behaviour. Abort exists <strong>only</strong> as an explicit action from your console. STRATUM issues no autonomous abort.</p>
+      </div>
+    </div>
+
+    <div style="height:16px"></div>
+    <div class="callout crit">
+      <h4>Named risk — operator saturation</h4>
+      <p>No self-abort, several simultaneous terminal actions and one operator is a real workload risk. It is named here, not waved away: it is a first-order item for the flight-test safety case, and abort deconfliction — stratified recovery altitudes, the same discipline as the run-in — is carried into the fault-injection matrix before any live engagement.</p>
+    </div>
+  </section>
+
+  <!-- 7. SAFETY POSTURE -->
+  <section id="safety">
+    <div class="sec-head">
+      <div class="eyebrow">Safety posture</div>
+      <h2>The link is not load-bearing</h2>
+    </div>
+    <p>The single most important commitment in this design: because separation is guaranteed by geometry rather than by supervision, <strong>losing the link degrades the mission without endangering the aircraft.</strong> Ground coordination makes the C2 link mission-critical; deconfliction-by-construction is what keeps it from being safety-critical.</p>
+    <div class="safety">
+      <div class="sc"><span class="ev ok">Link lost · one aircraft</span><h4>It finishes and holds</h4><p>The aircraft completes its firmware-owned run-in and settles onto its own slot. Safe, because the run-in was deconflicted before commit and never depended on you watching. STRATUM alerts and marks the ensemble degraded.</p></div>
+      <div class="sc"><span class="ev ok">Link lost · all aircraft</span><h4>Each completes and holds</h4><p>Every aircraft finishes and holds on its slot. What happens after the configured timeout is a verified, explicit choice — never the stock default of "nothing".</p></div>
+      <div class="sc"><span class="ev">One aircraft aborts / returns</span><h4>The others hold as briefed</h4><p>The ring is not silently re-solved. Re-spacing two survivors is a re-commit under uncertainty — an operator decision. STRATUM offers the re-plan; it does not take it.</p></div>
+      <div class="sc"><span class="ev">Cannot ARM</span><h4>Failsafe block verified first</h4><p>A mission cannot arm until STRATUM has read back and verified the required failsafe parameters on <em>every</em> aircraft. A failure blocks the mission and names the offending aircraft and parameter.</p></div>
+    </div>
+    <div style="height:16px"></div>
+    <div class="callout warn">
+      <h4>One production rule that lives outside software</h4>
+      <p>Each airframe must ship with a unique system ID. Two Daggers with the same ID present as <strong>one</strong> aircraft — the second silently never appears, a failure that looks like a radio fault and is not one. STRATUM detects and refuses a colliding fleet; the fix belongs in the build and acceptance procedure.</p>
+    </div>
+  </section>
+
+  <!-- 8. WHY IT'S BUILDABLE -->
+  <section id="maturity">
+    <div class="sec-head">
+      <div class="eyebrow">Architectural maturity</div>
+      <h2>Additive, not a rebuild</h2>
+    </div>
+    <div class="grid2">
+      <div>
+        <p>The capability sits on top of a control chain that is <strong>already multi-vehicle everywhere below the operator panel</strong>. The orchestration layer iterates its own set of aircraft and calls the same proven per-aircraft commands the single-vehicle path already uses. Nothing that works today regresses.</p>
+        <p>On the wire, a three-aircraft ring is three single-aircraft standoffs that differ by one number — the bearing. That is the cheapest possible extension of a contract that is already flying.</p>
+      </div>
+      <div>
+        <div class="chips" style="grid-template-columns:1fr">
+          <div class="chip"><span class="chip-k">Firmware change for v1</span><span class="chip-v" style="color:var(--nominal);font-weight:600;font-family:'IBM Plex Mono',monospace">NONE</span></div>
+          <div class="chip"><span class="chip-k">New wire contract</span><span class="chip-v">None — reuses the existing standoff command</span></div>
+          <div class="chip"><span class="chip-k">Assignment options at n=3</span><span class="chip-v">6 — checked exhaustively, no solver</span></div>
+          <div class="chip"><span class="chip-k">Single-vehicle path</span><span class="chip-v">Untouched — orchestration is strictly additive</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="foot-line">The remaining risk is not in the flight geometry. It is in the failsafe defaults — where three aircraft would otherwise make independent, uncoordinated decisions at exactly the moment the ground station stops watching.</div>
+    <div class="foot-row">
+      <span>NXM-OPSCON-STRATUM-MVO-001 · Rev 0.1 · 19 Sep 2026</span>
+      <span>Nexam Systems · STRATUM-Desktop · Dagger UAS</span>
+    </div>
+    <div class="foot-row" style="margin-top:10px">
+      <span style="font-family:'Saira',sans-serif;font-weight:700;font-size:16px;color:var(--accent-ink);letter-spacing:.02em">Decisions dictate destiny.</span>
+    </div>
+  </footer>
+
+</div>
