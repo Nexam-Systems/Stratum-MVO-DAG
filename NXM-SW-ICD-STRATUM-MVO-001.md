@@ -115,7 +115,7 @@ Reached as `vehicle->parameterManager()` (`Q_PROPERTY parameterManager`, CONSTAN
 | `getParameter` | `Fact* getParameter(int componentId, const QString& paramName)` | Read back the D8 block (`NAV_DLL_ACT`, `NAV_RCL_ACT`, `COM_DLL_EXCEPT`, `COM_RCL_EXCEPT`, `RTL_RETURN_ALT`, `STDF_SEQ`, `MAV_SYS_ID`). |
 | `refreshAllParameters` | `Q_INVOKABLE void refreshAllParameters()` | Force a re-read if the cache is cold at PREFLIGHT. |
 
-`STDF_SEQ` is deconfliction-critical (architecture D8/R4): values `{2,4}` set `approach_with_height = true` and collapse the transit-level stratification D4 depends on. The verifier requires `STDF_SEQ ∈ {1,3}` and treats any other value as a hard PREFLIGHT failure.
+`STDF_SEQ` is deconfliction-critical (architecture D8/R4): values `{2,4}` set `approach_with_height = true` and collapse the transit-level stratification D4 depends on. The verifier requires the complete `STDF_SEQ` value to equal `5`; any other value is a hard PREFLIGHT failure.
 
 ### 2.5 What the consumed contract deliberately excludes
 
@@ -254,7 +254,7 @@ class TransitPlanner {
 };
 ```
 
-Contract: allocates distinct transit levels `base + i·ΔH`, `ΔH ≥ 10 m` (architecture §6.3 — the workhorse deconfliction layer, one extra climb command per vehicle). Computes path lengths and ETAs; produces the staggered `CommitSchedule` (architecture D7). Precondition it must assume and the verifier must enforce: `STDF_SEQ ∈ {1,3}`.
+Contract: allocates distinct transit levels `base + i·ΔH`, `ΔH ≥ 10 m` (architecture §6.3 — the workhorse deconfliction layer, one extra climb command per vehicle). Computes path lengths and ETAs; produces the staggered `CommitSchedule` (architecture D7). Precondition it must assume and the verifier must enforce: `STDF_SEQ` equals `5`.
 
 ### 3.7 `FailsafeVerifier`
 
@@ -274,7 +274,7 @@ Contract (architecture D8/D9, RE6): gates ARM. Reads the required block per vehi
 | `COM_DLL_EXCEPT` | explicit | A decision, not a default. |
 | `RTL_RETURN_ALT` | per-vehicle, stratified | If RTL is retained, return legs inherit the same vertical discipline as the run-in. |
 | `MAV_SYS_ID` | unique across fleet | Collision makes the second vehicle silently vanish (§2.1). |
-| `STDF_SEQ` | 1 or 3 | `{2,4}` collapses transit stratification. Deconfliction-critical. |
+| `STDF_SEQ` | Exactly 5 | Any other value blocks PREFLIGHT. Deconfliction-critical. |
 
 ### 3.8 `SeparationMonitor` — the only cross-agent observer
 

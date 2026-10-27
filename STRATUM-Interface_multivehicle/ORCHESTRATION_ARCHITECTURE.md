@@ -262,7 +262,7 @@ ratified in flight test, but the *mechanism* is the decision here):
 | `COM_DLL_EXCEPT` | explicit, not defaulted | Must be a decision, not an accident. |
 | `RTL_RETURN_ALT` | per-vehicle, stratified | If RTL is the chosen action, the return legs must be vertically separated by the same discipline as the run-in. |
 | `MAV_SYS_ID` | unique across the fleet | See D9. |
-| `STDF_SEQ` | 1 or 3 (`approach_with_height = false`) | F3 — folding height into the approach destroys the transit-level stratification. |
+| `STDF_SEQ` | Exactly 5 | F3 — folding height into the approach destroys the transit-level stratification; PREFLIGHT blocks any other value. |
 
 That last row is not a preference. `STDF_SEQ ∈ {2, 4}` sets
 `approach_with_height = true`, which makes the run-in climb toward the hold

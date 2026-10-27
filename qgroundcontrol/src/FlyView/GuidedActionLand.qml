@@ -11,5 +11,8 @@ GuidedToolStripAction {
     visible:    true
     enabled:    !!_vehicle
     actionID:   _guidedController.actionSetFlightMode
-    actionData: qsTr("Land")
+    // STRATUM: actionData is a wire-protocol mode-name token matched case-insensitively
+    // by PX4FirmwarePlugin::setFlightMode. Do NOT wrap in qsTr -- a localized string
+    // breaks the match and silently no-ops the mode set.
+    actionData: "Land"
 }

@@ -340,6 +340,11 @@ void InitialConnectStateMachine::_handleAutopilotVersionSuccess(const mavlink_me
         patchVersion = (autopilotVersion.flight_sw_version >> (8*1)) & 0xFF;
         versionType = (FIRMWARE_VERSION_TYPE)((autopilotVersion.flight_sw_version >> (8*0)) & 0xFF);
         vehicle()->setFirmwareVersion(majorVersion, minorVersion, patchVersion, versionType);
+
+        // STRATUM: enforce admin-configured PX4 version floor at connect time so the
+        // operator sees the mismatch warning the moment the vehicle reports its version,
+        // not only when they issue a STRATUM command.
+        vehicle()->checkPx4VersionAgainstAdminFloor(tr("Vehicle connect"));
     }
 
     if (vehicle()->px4Firmware()) {
@@ -355,6 +360,30 @@ void InitialConnectStateMachine::_handleAutopilotVersionSuccess(const mavlink_me
         for (int i = 7; i >= 0; i--) {
             vehicle()->_gitHash.append(QString("%1").arg(autopilotVersion.flight_custom_version[i], 2, 16, QChar('0')));
         }
+
+        // STRATUM NXM-SW-GOV-001: decode the NX firmware contract from bytes 3..7.
+        //   [0] NX patch, [1] NX minor, [2] NX major  (already consumed above)
+        //   [3] 'N', [4] 'X'   -- marker
+        //   [5] schema major, [6] schema minor, [7] capability flags
+        // When the marker is absent this is stock PX4 (or a hash-only custom build);
+        // we clear schema/caps and mark markerValid=false so the compatibility gate
+        // rejects every custom command. STRATUM-side untagged builds encode NX-v0.0.0
+        // (markerValid=true, majors=0) -- displayed as a development build.
+        const uint8_t* cv = autopilotVersion.flight_custom_version;
+        const bool    nxMarkerValid = (cv[3] == 'N' && cv[4] == 'X');
+        const uint8_t schemaMajor   = nxMarkerValid ? cv[5] : 0;
+        const uint8_t schemaMinor   = nxMarkerValid ? cv[6] : 0;
+        const uint8_t capFlags      = nxMarkerValid ? cv[7] : 0;
+        vehicle()->setNxCapabilities(schemaMajor, schemaMinor, capFlags, nxMarkerValid);
+        qCDebug(InitialConnectStateMachineLog).noquote()
+            << "STRATUM NX contract:"
+            << "version=" << (nxMarkerValid ? vehicle()->nxVersionString() : QStringLiteral("(no NX marker)"))
+            << "schema="  << schemaMajor << "." << schemaMinor
+            << "caps=0x"  << QString::number(capFlags, 16)
+            << "px4="     << vehicle()->firmwareMajorVersion() << "."
+                          << vehicle()->firmwareMinorVersion() << "."
+                          << vehicle()->firmwarePatchVersion()
+            << "gitHash=" << vehicle()->_gitHash;
     } else {
         // APM Firmware stores the first 8 characters of the git hash as an ASCII character string
         char nullStr[9];

@@ -89,6 +89,10 @@ Item {
             mapName:                "FlightDisplayView"
             enabled:                !_is3DMode
             visible:                !_is3DMode
+
+            // STRATUM: "Set Standoff here" from the map-click drop panel opens the
+            // widget-layer standoff panel with the clicked coordinate pre-filled.
+            onStandoffHereRequested: (coordinate) => widgetLayer.openStandoffAt(coordinate)
         }
 
         FlyViewVideo {

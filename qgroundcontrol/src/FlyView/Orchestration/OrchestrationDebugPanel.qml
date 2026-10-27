@@ -14,7 +14,7 @@ import QGroundControl.FlyView   // OrchestrationManager / VehicleAgent enums
 //
 // S2 note: the S1 "force armable" bypass is retired. ARM is now gated by the real
 // FailsafeVerifier (RE6/D8/D9) — a vehicle missing the failsafe block, carrying
-// STDF_SEQ in {2,4}, or sharing a MAV_SYS_ID cannot reach armable, and the findings
+// an STDF_SEQ whose complete value is not 5, or sharing a MAV_SYS_ID cannot reach armable, and the findings
 // print in the log below. Provision the D8 block on each SITL instance to pass preflight.
 Window {
     id:     root
